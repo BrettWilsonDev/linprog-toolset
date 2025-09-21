@@ -19,6 +19,19 @@ private:
 
     static constexpr double EPS = 1e-12;
 
+    struct LPRResult
+    {
+        std::vector<std::vector<std::vector<double>>> tableaus;
+        std::vector<int> pivotCols;
+        std::vector<int> pivotRows;
+        std::vector<std::string> headerRow;
+        std::vector<int> phases;
+        double optimalSolution;
+        std::vector<double> changingVars;
+    };
+
+    LPRResult result;
+
 public:
     DualSimplex(bool isConsoleOutput = false) : isConsoleOutput(isConsoleOutput) {}
 
@@ -209,159 +222,209 @@ public:
         return {newTab, thetaRow};
     }
 
-std::pair<std::vector<std::vector<double>>, std::vector<double>> DoPrimalPivotOperation(
-    const std::vector<std::vector<double>>& tab, bool isMin) {
-    
-    std::vector<double> thetasCol;
-    std::vector<double> testRow(tab[0].begin(), tab[0].end() - 1);
-    
-    double largestNegativeNumber;
-    bool foundNumber = false;
-    
-    if (isMin) {
-        for (double num : testRow) {
-            if (num > 0 && num != 0) {
-                if (!foundNumber || num < largestNegativeNumber) {
-                    largestNegativeNumber = num;
-                    foundNumber = true;
+    std::pair<std::vector<std::vector<double>>, std::vector<double>> DoPrimalPivotOperation(
+        const std::vector<std::vector<double>> &tab, bool isMin)
+    {
+
+        std::vector<double> thetasCol;
+        std::vector<double> testRow(tab[0].begin(), tab[0].end() - 1);
+
+        double largestNegativeNumber;
+        bool foundNumber = false;
+
+        if (isMin)
+        {
+            for (double num : testRow)
+            {
+                if (num > 0 && num != 0)
+                {
+                    if (!foundNumber || num < largestNegativeNumber)
+                    {
+                        largestNegativeNumber = num;
+                        foundNumber = true;
+                    }
                 }
             }
         }
-    } else {
-        for (double num : testRow) {
-            if (num < 0 && num != 0) {
-                if (!foundNumber || num < largestNegativeNumber) {
-                    largestNegativeNumber = num;
-                    foundNumber = true;
+        else
+        {
+            for (double num : testRow)
+            {
+                if (num < 0 && num != 0)
+                {
+                    if (!foundNumber || num < largestNegativeNumber)
+                    {
+                        largestNegativeNumber = num;
+                        foundNumber = true;
+                    }
                 }
             }
         }
-    }
-    
-    if (!foundNumber) {
-        return {std::vector<std::vector<double>>(), std::vector<double>()};
-    }
-    
-    int colIndex = -1;
-    for (int i = 0; i < tab[0].size(); i++) {
-        if (tab[0][i] == largestNegativeNumber) {
-            colIndex = i;
-            break;
+
+        if (!foundNumber)
+        {
+            return {std::vector<std::vector<double>>(), std::vector<double>()};
         }
-    }
-    
-    std::vector<double> thetas;
-    for (int i = 1; i < tab.size(); i++) {
-        if (tab[i][colIndex] != 0) {
-            thetas.push_back(tab[i].back() / tab[i][colIndex]);
-        } else {
-            thetas.push_back(std::numeric_limits<double>::infinity());
-        }
-    }
-    
-    thetasCol = thetas;
-    
-    bool allNegativeThetas = true;
-    for (double num : thetas) {
-        if (num >= 0) {
-            allNegativeThetas = false;
-            break;
-        }
-    }
-    
-    if (allNegativeThetas) {
-        return {std::vector<std::vector<double>>(), std::vector<double>()};
-    }
-    
-    bool hasPositiveNonInf = false;
-    for (double num : thetas) {
-        if (num > 0 && num != std::numeric_limits<double>::infinity() && num != 0) {
-            hasPositiveNonInf = true;
-            break;
-        }
-    }
-    
-    double minTheta;
-    if (!hasPositiveNonInf) {
-        bool hasZero = false;
-        for (double num : thetas) {
-            if (num == 0) {
-                hasZero = true;
+
+        int colIndex = -1;
+        for (int i = 0; i < tab[0].size(); i++)
+        {
+            if (tab[0][i] == largestNegativeNumber)
+            {
+                colIndex = i;
                 break;
             }
         }
-        if (hasZero) {
-            minTheta = 0.0;
-        } else {
-            return {std::vector<std::vector<double>>(), std::vector<double>()};
-        }
-    } else {
-        minTheta = std::numeric_limits<double>::infinity();
-        for (double x : thetas) {
-            if (x > 0 && x != std::numeric_limits<double>::infinity()) {
-                minTheta = std::min(minTheta, x);
+
+        std::vector<double> thetas;
+        for (int i = 1; i < tab.size(); i++)
+        {
+            if (tab[i][colIndex] != 0)
+            {
+                thetas.push_back(tab[i].back() / tab[i][colIndex]);
+            }
+            else
+            {
+                thetas.push_back(std::numeric_limits<double>::infinity());
             }
         }
-    }
-    
-    if (minTheta == std::numeric_limits<double>::infinity()) {
-        bool hasZero = false;
-        for (double num : thetas) {
-            if (num == 0) {
-                hasZero = true;
+
+        thetasCol = thetas;
+
+        bool allNegativeThetas = true;
+        for (double num : thetas)
+        {
+            if (num >= 0)
+            {
+                allNegativeThetas = false;
                 break;
             }
         }
-        if (hasZero) {
-            minTheta = 0;
-        } else {
+
+        if (allNegativeThetas)
+        {
             return {std::vector<std::vector<double>>(), std::vector<double>()};
         }
-    }
-    
-    int rowIndex = -1;
-    for (int i = 0; i < thetas.size(); i++) {
-        if (thetas[i] == minTheta) {
-            rowIndex = i + 1;
-            break;
+
+        bool hasPositiveNonInf = false;
+        for (double num : thetas)
+        {
+            if (num > 0 && num != std::numeric_limits<double>::infinity() && num != 0)
+            {
+                hasPositiveNonInf = true;
+                break;
+            }
         }
-    }
-    
-    double divNumber = tab[rowIndex][colIndex];
-    if (divNumber == 0) {
-        return {std::vector<std::vector<double>>(), std::vector<double>()};
-    }
-    
-    std::vector<std::vector<double>> operationTab(tab.size());
-    for (int i = 0; i < tab.size(); i++) {
-        operationTab[i].resize(tab[i].size(), 0.0);
-    }
-    
-    // Divide pivot row
-    for (int j = 0; j < tab[rowIndex].size(); j++) {
-        operationTab[rowIndex][j] = tab[rowIndex][j] / divNumber;
-        if (operationTab[rowIndex][j] == -0.0) {
-            operationTab[rowIndex][j] = 0.0;
+
+        double minTheta;
+        if (!hasPositiveNonInf)
+        {
+            bool hasZero = false;
+            for (double num : thetas)
+            {
+                if (num == 0)
+                {
+                    hasZero = true;
+                    break;
+                }
+            }
+            if (hasZero)
+            {
+                minTheta = 0.0;
+            }
+            else
+            {
+                return {std::vector<std::vector<double>>(), std::vector<double>()};
+            }
         }
-    }
-    
-    // Apply pivot operation to other rows
-    for (int i = 0; i < tab.size(); i++) {
-        if (i == rowIndex) {
-            continue;
+        else
+        {
+            minTheta = std::numeric_limits<double>::infinity();
+            for (double x : thetas)
+            {
+                if (x > 0 && x != std::numeric_limits<double>::infinity())
+                {
+                    minTheta = std::min(minTheta, x);
+                }
+            }
         }
-        for (int j = 0; j < tab[i].size(); j++) {
-            double mathItem = tab[i][j] - (tab[i][colIndex] * operationTab[rowIndex][j]);
-            operationTab[i][j] = mathItem;
+
+        if (minTheta == std::numeric_limits<double>::infinity())
+        {
+            bool hasZero = false;
+            for (double num : thetas)
+            {
+                if (num == 0)
+                {
+                    hasZero = true;
+                    break;
+                }
+            }
+            if (hasZero)
+            {
+                minTheta = 0;
+            }
+            else
+            {
+                return {std::vector<std::vector<double>>(), std::vector<double>()};
+            }
         }
+
+        int rowIndex = -1;
+        for (int i = 0; i < thetas.size(); i++)
+        {
+            if (thetas[i] == minTheta)
+            {
+                rowIndex = i + 1;
+                break;
+            }
+        }
+
+        double divNumber = tab[rowIndex][colIndex];
+        if (divNumber == 0)
+        {
+            return {std::vector<std::vector<double>>(), std::vector<double>()};
+        }
+
+        std::vector<std::vector<double>> operationTab(tab.size());
+        for (int i = 0; i < tab.size(); i++)
+        {
+            operationTab[i].resize(tab[i].size(), 0.0);
+        }
+
+        // Divide pivot row
+        for (int j = 0; j < tab[rowIndex].size(); j++)
+        {
+            operationTab[rowIndex][j] = tab[rowIndex][j] / divNumber;
+            if (operationTab[rowIndex][j] == -0.0)
+            {
+                operationTab[rowIndex][j] = 0.0;
+            }
+        }
+
+        // Apply pivot operation to other rows
+        for (int i = 0; i < tab.size(); i++)
+        {
+            if (i == rowIndex)
+            {
+                continue;
+            }
+            for (int j = 0; j < tab[i].size(); j++)
+            {
+                double mathItem = tab[i][j] - (tab[i][colIndex] * operationTab[rowIndex][j]);
+                operationTab[i][j] = mathItem;
+            }
+        }
+
+        // Optional console output (uncomment if needed)
+        // std::cout << "the pivot col in primal is " << (colIndex + 1)
+        //           << " and the pivot row is " << (rowIndex + 1) << std::endl;
+
+        IMPivotCols.push_back(colIndex);
+        IMPivotRows.push_back(rowIndex);
+
+        return {operationTab, thetasCol};
     }
-    
-    // Optional console output (uncomment if needed)
-    // std::cout << "the pivot col in primal is " << (colIndex + 1) 
-    //           << " and the pivot row is " << (rowIndex + 1) << std::endl;
-    
-    return {operationTab, thetasCol};
-}
 
     struct GetInputResult
     {
@@ -545,37 +608,6 @@ std::pair<std::vector<std::vector<double>>, std::vector<double>> DoPrimalPivotOp
         {
             xVars.push_back("x" + std::to_string(i));
         }
-        // int amtOfX = 0, amtOfSlack = 0, amtOfExcess = 0;
-        // // std::vector<std::string> topRow;
-        // int topRowSize = lenObj + amtOfE + amtOfS;
-
-        // for (int i = 0; i < lenObj; i++)
-        // {
-        //     if (amtOfX < lenObj)
-        //     {
-        //         topRow.push_back(xVars[amtOfX++]);
-        //     }
-        // }
-
-        // for (int i = 0; i < amtOfE; i++)
-        // {
-        //     if (amtOfSlack < amtOfE)
-        //     {
-        //         topRow.push_back("e" + std::to_string(amtOfExcess + 1));
-        //         amtOfExcess++;
-        //     }
-        // }
-
-        // for (int i = 0; i < amtOfS; i++)
-        // {
-        //     if (amtOfExcess < amtOfS)
-        //     {
-        //         topRow.push_back("s" + std::to_string(amtOfSlack + 1));
-        //         amtOfSlack++;
-        //     }
-        // }
-
-        // topRow.push_back("Rhs");
 
         if (isConsoleOutput)
         {
@@ -648,6 +680,25 @@ std::pair<std::vector<std::vector<double>>, std::vector<double>> DoPrimalPivotOp
         }
 
         double optimalSolution = tableaus.back()[0].back();
+
+        result.tableaus = tableaus;
+        result.pivotCols = IMPivotCols;
+        result.pivotRows = IMPivotRows;
+        result.headerRow = IMHeaderRow;
+        result.phases = phases;
+        result.optimalSolution = optimalSolution;
+        result.changingVars = changingVars;
+
         return {tableaus, changingVars, optimalSolution, IMPivotCols, IMPivotRows, IMHeaderRow};
+    }
+
+    std::vector<int> GetPhases()
+    {
+        return phases;
+    }
+
+    LPRResult GetResult()
+    {
+        return result;
     }
 };

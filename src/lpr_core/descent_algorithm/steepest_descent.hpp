@@ -14,7 +14,7 @@
 #include "exprtk.hpp"
 #include "symbolic_eval.hpp"
 
-using Point = vector<double>;
+using Point = std::vector<double>;
 
 // ---------- Utility to handle floating-point noise ----------
 static double cleanFloat(double x, double threshold = 1e-10)
@@ -26,7 +26,7 @@ static double cleanFloat(double x, double threshold = 1e-10)
 class FunctionParser
 {
 public:
-    FunctionParser(const string &exprStr, const vector<string> &vars)
+    FunctionParser(const std::string &exprStr, const std::vector<std::string> &vars)
     {
         for (const auto &v : vars)
         {
@@ -37,7 +37,7 @@ public:
         expression.register_symbol_table(symbol_table);
         if (!parser.compile(exprStr, expression))
         {
-            throw runtime_error(string("Failed to parse expression: ") + exprStr);
+            throw std::runtime_error(std::string("Failed to parse expression: ") + exprStr);
         }
         this->exprStr = exprStr;
         this->vars = vars;
@@ -46,29 +46,29 @@ public:
     double eval(const Point &p)
     {
         if (p.size() != vars.size())
-            throw runtime_error("Point dimension mismatch in eval()");
+            throw std::runtime_error("Point dimension mismatch in eval()");
         for (size_t i = 0; i < vars.size(); ++i)
             variableMap[vars[i]] = p[i];
         return cleanFloat(expression.value());
     }
 
-    const string &getExprString() const { return exprStr; }
-    const vector<string> &getVars() const { return vars; }
+    const std::string &getExprString() const { return exprStr; }
+    const std::vector<std::string> &getVars() const { return vars; }
 
 private:
-    map<string, double> variableMap;
+    std::map<std::string, double> variableMap;
     exprtk::symbol_table<double> symbol_table;
     exprtk::expression<double> expression;
     exprtk::parser<double> parser;
-    string exprStr;
-    vector<string> vars;
+    std::string exprStr;
+    std::vector<std::string> vars;
 };
 
 // ---------- Utility formatting ----------
-static string pointToString(const Point &p, int prec = 6)
+static std::string pointToString(const Point &p, int prec = 6)
 {
-    ostringstream oss;
-    oss << fixed << setprecision(prec) << "(";
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(prec) << "(";
     for (size_t i = 0; i < p.size(); ++i)
     {
         oss << cleanFloat(p[i]);
@@ -79,10 +79,10 @@ static string pointToString(const Point &p, int prec = 6)
     return oss.str();
 }
 
-static string vecToString(const vector<double> &v, int prec = 6)
+static std::string vecToString(const std::vector<double> &v, int prec = 6)
 {
-    ostringstream oss;
-    oss << fixed << setprecision(prec) << "[";
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(prec) << "[";
     for (size_t i = 0; i < v.size(); ++i)
     {
         oss << cleanFloat(v[i]);
@@ -94,10 +94,10 @@ static string vecToString(const vector<double> &v, int prec = 6)
 }
 
 // ---------- Numerical derivatives ----------
-static vector<double> numericalGradient(FunctionParser &f, const Point &x, double eps = 1e-5)
+static std::vector<double> numericalGradient(FunctionParser &f, const Point &x, double eps = 1e-5)
 {
     size_t n = x.size();
-    vector<double> grad(n, 0.0);
+    std::vector<double> grad(n, 0.0);
     Point x1 = x, x2 = x;
     for (size_t i = 0; i < n; ++i)
     {
@@ -112,10 +112,10 @@ static vector<double> numericalGradient(FunctionParser &f, const Point &x, doubl
     return grad;
 }
 
-static vector<vector<double>> numericalHessian(FunctionParser &f, const Point &x, double eps = 1e-4)
+static std::vector<std::vector<double>> numericalHessian(FunctionParser &f, const Point &x, double eps = 1e-4)
 {
     size_t n = x.size();
-    vector<vector<double>> H(n, vector<double>(n, 0.0));
+    std::vector<std::vector<double>> H(n, std::vector<double>(n, 0.0));
     Point xp = x, xm = x;
     // diagonal second derivatives
     for (size_t i = 0; i < n; ++i)
@@ -156,10 +156,10 @@ static vector<vector<double>> numericalHessian(FunctionParser &f, const Point &x
 }
 
 // ---------- Jacobi eigenvalue algorithm for symmetric matrices ----------
-static vector<double> jacobiEigenvalues(vector<vector<double>> A, int maxIter = 100, double tol = 1e-10)
+static std::vector<double> jacobiEigenvalues(std::vector<std::vector<double>> A, int maxIter = 100, double tol = 1e-10)
 {
     size_t n = A.size();
-    vector<vector<double>> V(n, vector<double>(n, 0.0));
+    std::vector<std::vector<double>> V(n, std::vector<double>(n, 0.0));
     for (size_t i = 0; i < n; ++i)
         V[i][i] = 1.0;
 
@@ -227,7 +227,7 @@ static vector<double> jacobiEigenvalues(vector<vector<double>> A, int maxIter = 
         }
     }
 
-    vector<double> evals(n);
+    std::vector<double> evals(n);
     for (size_t i = 0; i < n; ++i)
         evals[i] = cleanFloat(A[i][i]);
     return evals;
@@ -236,7 +236,7 @@ static vector<double> jacobiEigenvalues(vector<vector<double>> A, int maxIter = 
 // ---------- Golden section search with verbose steps (numeric) ----------
 static double goldenSectionSearchDetailed(FunctionParser &f,
                                           const Point &currentPoint,
-                                          const vector<double> &direction,
+                                          const std::vector<double> &direction,
                                           bool maximize,
                                           double a = -2.0, double b = 2.0,
                                           double tol = 1e-8,
@@ -287,7 +287,7 @@ static double goldenSectionSearchDetailed(FunctionParser &f,
         ++iter;
         if (verbose && iter <= maxStepsToPrint)
         {
-            std::cout << "      iter " << setw(2) << iter << ": a=" << a << " b=" << b
+            std::cout << "      iter " << std::setw(2) << iter << ": a=" << a << " b=" << b
                       << " x1=" << x1 << " f1=" << f1 << " x2=" << x2 << " f2=" << f2 << "\n";
         }
         if (iter > 10000)
@@ -303,8 +303,8 @@ static double goldenSectionSearchDetailed(FunctionParser &f,
 class DetailedSteepestDescentOptimizer
 {
 public:
-    DetailedSteepestDescentOptimizer(const string &functionExpr,
-                                     const vector<string> &variables,
+    DetailedSteepestDescentOptimizer(const std::string &functionExpr,
+                                     const std::vector<std::string> &variables,
                                      bool maximize = false)
         : parser(functionExpr, variables), maximize(maximize)
     {
@@ -318,17 +318,17 @@ public:
         return cleanFloat(parser.eval(p));
     }
 
-    vector<double> evaluateGradient(const Point &p)
+    std::vector<double> evaluateGradient(const Point &p)
     {
         return numericalGradient(parser, p);
     }
 
-    vector<vector<double>> evaluateHessian(const Point &p)
+    std::vector<std::vector<double>> evaluateHessian(const Point &p)
     {
         return numericalHessian(parser, p);
     }
 
-    string checkCriticalPointNature(const Point &p)
+    std::string checkCriticalPointNature(const Point &p)
     {
         auto H = evaluateHessian(p);
         auto eigs = jacobiEigenvalues(H);
@@ -373,7 +373,7 @@ public:
         return result;
     }
 
-    double detailedStepSizeCalculation(const Point &currentPoint, const vector<double> &gradient, bool verbose = true)
+    double detailedStepSizeCalculation(const Point &currentPoint, const std::vector<double> &gradient, bool verbose = true)
     {
         if (verbose)
         {
@@ -382,7 +382,7 @@ public:
             std::cout << "    Gradient vector: " << vecToString(gradient) << "\n";
         }
 
-        vector<double> direction = gradient;
+        std::vector<double> direction = gradient;
         for (size_t i = 0; i < direction.size(); ++i)
             direction[i] = maximize ? direction[i] : -direction[i];
         if (verbose)
@@ -453,7 +453,7 @@ public:
 
             if (verbose)
             {
-                std::cout << "Substituting new point into function f(x, y)\nOriginal function:" << OGfunctionExpr << std::endl;
+                std::cout << "\nSubstituting new point into function f(x, y)\nOriginal function:\nSubstituting:" << OGfunctionExpr << std::endl;
                 for (size_t i = 0; i < newPointStr.size(); i++)
                 {
                     std::cout << "  " << newPointStr[i] << std::endl;
@@ -497,18 +497,18 @@ public:
         return cleanFloat(hGoldRatio);
     }
 
-    tuple<Point, double, vector<map<string, string>>> optimize(const Point &initialPoint, int maxIterations = 100, double tolerance = 1e-6, bool verbose = true)
+    std::tuple<Point, double, std::vector<std::map<std::string, std::string>>> optimize(const Point &initialPoint, int maxIterations = 100, double tolerance = 1e-6, bool verbose = true)
     {
         Point currentPoint = initialPoint;
-        vector<map<string, string>> history;
+        std::vector<std::map<std::string, std::string>> history;
 
         if (verbose)
         {
-            string method = maximize ? "Steepest Ascent" : "Steepest Descent";
+            std::string method = maximize ? "Steepest Ascent" : "Steepest Descent";
             std::cout << "\n"
-                      << string(80, '=') << "\n";
+                      << std::string(80, '=') << "\n";
             std::cout << method << " Algorithm - Detailed Steps\n";
-            std::cout << string(80, '=') << "\n";
+            std::cout << std::string(80, '=') << "\n";
             std::cout << "Function: f(";
             for (size_t i = 0; i < varNames.size(); ++i)
             {
@@ -519,7 +519,7 @@ public:
             std::cout << "Initial point: " << pointToString(currentPoint) << "\n";
             std::cout << "Initial function value: f" << pointToString(currentPoint) << " = " << evaluateFunction(currentPoint) << "\n\n";
             std::cout << "Gradient/Hessian will be computed numerically (central differences).\n\n";
-            std::cout << string(80, '-') << "\n";
+            std::cout << std::string(80, '-') << "\n";
         }
 
         for (int iteration = 0; iteration < maxIterations; ++iteration)
@@ -527,10 +527,10 @@ public:
             if (verbose)
             {
                 std::cout << "\n ITERATION " << (iteration + 1) << ":\n";
-                std::cout << string(40, '=') << "\n";
+                std::cout << std::string(40, '=') << "\n";
             }
 
-            vector<double> grad = evaluateGradient(currentPoint);
+            std::vector<double> grad = evaluateGradient(currentPoint);
             double gradNorm = 0.0;
             for (double g : grad)
                 gradNorm += g * g;
@@ -548,12 +548,12 @@ public:
                 std::cout << "  Gradient norm: ||∇f|| = " << gradNorm << "\n";
             }
 
-            map<string, string> iterInfo;
-            iterInfo["iteration"] = to_string(iteration + 1);
+            std::map<std::string, std::string> iterInfo;
+            iterInfo["iteration"] = std::to_string(iteration + 1);
             iterInfo["point"] = pointToString(currentPoint);
-            iterInfo["functionValue"] = to_string(evaluateFunction(currentPoint));
+            iterInfo["functionValue"] = std::to_string(evaluateFunction(currentPoint));
             iterInfo["gradient"] = vecToString(grad);
-            iterInfo["gradientNorm"] = to_string(gradNorm);
+            iterInfo["gradientNorm"] = std::to_string(gradNorm);
 
             if (gradNorm < tolerance)
             {
@@ -569,9 +569,9 @@ public:
             if (verbose)
                 std::cout << "\nStep 2: Find optimal step size\n";
             double stepSize = detailedStepSizeCalculation(currentPoint, grad, verbose);
-            iterInfo["stepSize"] = to_string(stepSize);
+            iterInfo["stepSize"] = std::to_string(stepSize);
 
-            vector<double> direction = grad;
+            std::vector<double> direction = grad;
             for (size_t i = 0; i < direction.size(); ++i)
                 direction[i] = maximize ? direction[i] : -direction[i];
 
@@ -615,11 +615,11 @@ public:
         if (verbose)
         {
             std::cout << "\n"
-                      << string(80, '=') << "\n";
+                      << std::string(80, '=') << "\n";
             std::cout << " FINAL RESULTS\n";
-            std::cout << string(80, '=') << "\n";
-            ostringstream fp;
-            fp << fixed << setprecision(6);
+            std::cout << std::string(80, '=') << "\n";
+            std::ostringstream fp;
+            fp << std::fixed << std::setprecision(6);
             for (size_t i = 0; i < currentPoint.size(); ++i)
             {
                 fp << varNames[i] << "=" << cleanFloat(currentPoint[i]);
@@ -627,24 +627,24 @@ public:
                     fp << ", ";
             }
             std::cout << "Optimal point: (" << fp.str() << ")\n";
-            std::cout << "Optimal value: " << fixed << setprecision(6) << cleanFloat(optimalValue) << "\n\n";
+            std::cout << "Optimal value: " << std::fixed << std::setprecision(6) << cleanFloat(optimalValue) << "\n\n";
 
             std::cout << "Hessian Analysis:\n";
             std::cout << "Hessian (numeric, central differences):\n";
             auto H = evaluateHessian(currentPoint);
-            std::cout << fixed << setprecision(6);
+            std::cout << std::fixed << std::setprecision(6);
             for (size_t i = 0; i < H.size(); ++i)
             {
                 std::cout << "  [ ";
                 for (size_t j = 0; j < H.size(); ++j)
                 {
-                    std::cout << setw(10) << cleanFloat(H[i][j]) << (j + 1 == H.size() ? " " : ", ");
+                    std::cout << std::setw(10) << cleanFloat(H[i][j]) << (j + 1 == H.size() ? " " : ", ");
                 }
                 std::cout << "]\n";
             }
             auto eigs = jacobiEigenvalues(H);
             std::cout << "Eigenvalues: " << vecToString(eigs) << "\n";
-            string nature = checkCriticalPointNature(currentPoint);
+            std::string nature = checkCriticalPointNature(currentPoint);
             std::cout << "Nature of critical point: " << nature << "\n";
             if (eigs.size() == 2)
             {
@@ -668,7 +668,7 @@ public:
 
 private:
     FunctionParser parser;
-    vector<string> varNames;
+    std::vector<std::string> varNames;
     bool maximize;
     size_t n;
     std::string OGfunctionExpr;
@@ -680,7 +680,7 @@ public:
     SteepestDescent() {}
     ~SteepestDescent() {}
 
-    void DoSteepestDescent(const string &exprStr, const vector<string> &vars, const Point &initialPoint, bool maximize = false)
+    void DoSteepestDescent(const std::string &exprStr, const std::vector<std::string> &vars, const Point &initialPoint, bool maximize = false)
     {
         DetailedSteepestDescentOptimizer optimizer(exprStr, vars, maximize);
         optimizer.optimize(initialPoint, 100, 1e-5, true);

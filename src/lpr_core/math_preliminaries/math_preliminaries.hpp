@@ -1,5 +1,4 @@
-#ifndef MATH_PRELIMINARIES_HPP
-#define MATH_PRELIMINARIES_HPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -9,8 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
-// #include <../vendor/SymbolicCpp/headers/symbolicc++.h>
-// #include <symbolicc++.h>
+
 #include "symbolicc++.h"
 #include "dual_simplex.hpp"
 
@@ -47,15 +45,6 @@ private:
     std::string lockOptTab;
     bool optTabLockState;
 
-    std::vector<std::vector<std::vector<Symbolic>>> newTableaus;
-
-    std::vector<int> IMPivotCols;
-    std::vector<int> IMPivotRows;
-    std::vector<std::string> IMHeaderRow;
-
-    int pivotCol;
-    int pivotRow;
-
     bool isAllDeltaCRow;
     bool isSingleDeltaCRow;
     bool isSingleDeltaARow;
@@ -66,6 +55,27 @@ private:
     bool isFormulaDeltaChanged;
 
     std::string currentDeltaSelection;
+
+    bool solveDelta;
+
+    std::vector<std::vector<std::string>> changingTableOut;
+    std::vector<std::vector<std::string>> optimalTableOut;
+    std::vector<std::vector<std::string>> initialTableOut;
+
+    Symbolic matrixCbvOut;
+    Symbolic matrixBOut;
+    Symbolic matrixBNegOneOut;
+    Symbolic matrixCbvNegOneOut;
+
+    std::vector<std::string> headerRowOut;
+
+    double valueRange;
+
+    std::vector<std::vector<std::vector<double>>> reOptTableaus;
+    std::vector<int> pivotCols;
+    std::vector<int> pivotRows;
+
+    bool shouldReoptimize;
 
 public:
     MathPreliminaries(bool isConsoleOutput = false) : isConsoleOutput(isConsoleOutput), d("d")
@@ -98,16 +108,7 @@ public:
         lockOptTab = "off";
         optTabLockState = false;
 
-        newTableaus.clear();
-
-        IMPivotCols.clear();
-        IMPivotRows.clear();
-        IMHeaderRow.clear();
-
-        pivotCol = -1;
-        pivotRow = -1;
-
-        // solveDelta = false;
+        solveDelta = false;
         // deltaSolve = "off";
 
         isAllDeltaCRow = false;
@@ -120,6 +121,10 @@ public:
         isFormulaDeltaChanged = false;
 
         currentDeltaSelection = "dStore0";
+
+        valueRange = 0;
+
+        shouldReoptimize = false;
     }
 
     std::tuple<std::vector<double>, std::vector<std::vector<double>>, bool> testInput(int testNum = -1)
@@ -347,7 +352,7 @@ public:
     }
 
     std::tuple<std::vector<std::vector<Symbolic>>, Symbolic, Symbolic, Symbolic, Symbolic, std::vector<int>>
-    DoPreliminaries(const std::vector<Symbolic> &objFunc, const std::vector<std::vector<Symbolic>> &constraints, bool isMin, bool absRule = false, bool optTabLockState = false)
+    DoPreliminaries(std::vector<Symbolic> &objFunc, std::vector<std::vector<Symbolic>> &constraints, bool isMin, bool absRule = false, bool optTabLockState = false)
     {
         // Scrub delta from inputs for dual simplex (convert Symbolic expressions to doubles)
         std::vector<double> tObjFunc = scrubDelta(objFunc);
@@ -358,30 +363,67 @@ public:
         }
 
         // The dual simplex works with doubles and returns results we need to convert back
-        std::vector<std::vector<std::vector<double>>> doubleTableaus;
-        std::vector<double> doubleChangingVars;
+        // std::vector<std::vector<std::vector<double>>> doubleTableaus;
+        // std::vector<double> doubleChangingVars;
 
-        if (!optTabLockState)
+        // Call dual simplex with double inputs
+        auto [doubleTableaus, doubleChangingVars, doubleOptimalSolution, _a, __b, headerRow] = dual->DoDualSimplex(tObjFunc, tConstraints, isMin);
+
+        this->headerRowOut = headerRow;
+
+        // Convert double tableaus back to Symbolic expressions for globalOptimalTab
+        globalOptimalTab.clear();
+        for (const auto &doubleTab : doubleTableaus)
         {
-            // Call dual simplex with double inputs
-            auto [doubleTableaus, doubleChangingVars, doubleOptimalSolution, _a, __b, __c] = dual->DoDualSimplex(tObjFunc, tConstraints, isMin);
-
-            // Convert double tableaus back to Symbolic expressions for globalOptimalTab
-            globalOptimalTab.clear();
-            for (const auto &doubleTab : doubleTableaus)
+            std::vector<std::vector<Symbolic>> exTab;
+            for (const auto &doubleRow : doubleTab)
             {
-                std::vector<std::vector<Symbolic>> exTab;
-                for (const auto &doubleRow : doubleTab)
+                std::vector<Symbolic> exRow;
+                for (double val : doubleRow)
                 {
-                    std::vector<Symbolic> exRow;
-                    for (double val : doubleRow)
-                    {
-                        exRow.push_back(Symbolic(val));
-                    }
-                    exTab.push_back(exRow);
+                    exRow.push_back(Symbolic(val));
                 }
-                globalOptimalTab.push_back(exTab);
+                exTab.push_back(exRow);
             }
+            globalOptimalTab.push_back(exTab);
+        }
+
+        if (optTabLockState)
+        {
+
+            // Update objFunc
+            for (size_t i = 0; i < objFunc.size(); ++i)
+            {
+                if (currentDeltaSelection == "o" + std::to_string(i))
+                {
+                    objFunc[i] = valueRange;
+                }
+            }
+
+            // Update constraints
+            for (size_t i = 0; i < constraints.size(); ++i)
+            {
+                for (size_t j = 0; j < constraints[i].size(); ++j)
+                {
+                    if (currentDeltaSelection == "c" + std::to_string(i) + std::to_string(j))
+                    {
+                        constraints[i][j] = valueRange;
+                    }
+                }
+            }
+
+            // Update constraints right-hand side (RHS)
+            for (size_t i = 0; i < constraints.size(); ++i)
+            {
+                if (currentDeltaSelection == "cRhs" + std::to_string(i))
+                {
+                    constraints[i][constraints[i].size() - 2] = valueRange;
+                    // constraints[i][constraints[i].size() - 2] = Symbolic(std::to_string(valueRange));
+                    // constraints[i][constraints[i].size() - 2] = constraints[i][constraints[i].size() - 2];
+                }
+            }
+
+            // currentDeltaSelection = "dStore0";
         }
 
         // Use globalOptimalTab for the rest of the computation
@@ -607,99 +649,134 @@ public:
             }
         }
 
-        // Convert numeric values to double where possible
-        for (size_t i = 0; i < changingTable.size(); i++)
+        if (optTabLockState)
         {
-            for (size_t j = 0; j < changingTable[i].size(); j++)
+            // auto [doubleTableaus, doubleChangingVars, doubleOptimalSolution, _a, __b, headerRow] = dual->DoDualSimplex(tObjFunc, tConstraints, isMin);
+
+            std::vector<std::vector<double>> tChangingTable;
+            for (size_t i = 0; i < changingTable.size(); ++i) {
+                tChangingTable.push_back(std::vector<double>());
+                for (size_t j = 0; j < changingTable[i].size(); ++j) {
+                    // tChangingTable[i].push_back(changingTable[i][j].as_double());
+                    tChangingTable[i].push_back((double)changingTable[i][j]);
+                }
+            }
+
+            try
             {
-                // Symbolic does not have evalf; expressions are kept symbolic
+
+                auto [reOptTableaus, _aa, _bb, pivotCols, pivotRows, _ee] = dual->DoDualSimplex(tObjFunc, tConstraints, isMin, &tChangingTable);
+                this->reOptTableaus = reOptTableaus;
+                this->pivotCols = pivotCols;
+                this->pivotRows = pivotRows;
+
+                if (reOptTableaus.size() != 1)
+                {
+                    this->shouldReoptimize = true;
+                }
+            }
+            catch(...)
+            {
+            }
+            
+
+            for (size_t i = 0; i < reOptTableaus.size(); ++i) {
+                for (size_t j = 0; j < reOptTableaus[i].size(); ++j) {
+                    for (size_t k = 0; k < reOptTableaus[i][j].size(); ++k) {
+                        std::cout << std::setw(10) << reOptTableaus[i][j][k] << " ";
+                    }
+                    std::cout << std::endl;
+                }
+                std::cout << std::endl << std::endl;
+            }
+
+            std::cout << reOptTableaus.size() << std::endl;
+        }
+
+        if (solveDelta)
+        {
+            for (size_t i = 0; i < changingTable.size(); ++i)
+            {
+                for (size_t j = 0; j < changingTable[i].size(); ++j)
+                {
+                    try
+                    {
+                        Symbolic &expr = changingTable[i][j];
+                        std::string tmpName = "__sym_tmp_" + std::to_string(i) + "_" + std::to_string(j);
+                        Symbolic tmp(tmpName.c_str());
+
+                        std::ostringstream oss;
+                        oss << expr;
+                        std::string before = oss.str();
+
+                        oss.str("");
+                        oss.clear();
+                        oss << expr[d == tmp];
+                        std::string after = oss.str();
+
+                        bool contains_d = (before != after);
+
+                        if (!contains_d)
+                        {
+                            try
+                            {
+                                double v0 = double(expr[d == 0]);
+                                double v1 = double(expr[d == 1]);
+                                if (v0 != v1)
+                                    contains_d = true;
+                            }
+                            catch (...)
+                            {
+                                contains_d = true;
+                            }
+                        }
+
+                        if (contains_d)
+                        {
+                            auto solutions = solve(expr, d);
+                            if (!solutions.empty())
+                            {
+                                // expr = solutions.back().rhs; // your original pattern
+                                // expr = solutions.back();
+                                std::ostringstream oss;
+                                oss << solutions.back().rhs;
+                                std::string temp = oss.str();
+                                temp.insert(0, "d = ");
+
+                                expr = Symbolic(temp.c_str());
+                            }
+                        }
+                    }
+                    catch (...)
+                    {
+                    }
+                }
             }
         }
+
+        std::vector<std::vector<std::string>> strTable(tableaus[0].size());
+        std::vector<size_t> colWidths(tableaus[0][0].size(), 0);
+
+        for (size_t i = 0; i < tableaus[0].size(); i++)
+        {
+            strTable[i].resize(tableaus[0][i].size());
+            for (size_t j = 0; j < tableaus[0][i].size(); j++)
+            {
+                std::ostringstream oss;
+                oss << tableaus[0][i][j];
+                strTable[i][j] = oss.str();
+
+                if (strTable[i][j].size() > colWidths[j])
+                    colWidths[j] = strTable[i][j].size();
+            }
+        }
+
+        this->initialTableOut = strTable;
 
         if (isConsoleOutput)
         {
-            // Print initial table
             std::cout << "\ninitial table\n"
                       << std::endl;
-            std::vector<std::vector<std::string>> strTable(tableaus[0].size());
-            std::vector<size_t> colWidths(tableaus[0][0].size(), 0);
-
-            for (size_t i = 0; i < tableaus[0].size(); i++)
-            {
-                strTable[i].resize(tableaus[0][i].size());
-                for (size_t j = 0; j < tableaus[0][i].size(); j++)
-                {
-                    std::ostringstream oss;
-                    oss << tableaus[0][i][j];
-                    strTable[i][j] = oss.str();
-
-                    if (strTable[i][j].size() > colWidths[j])
-                        colWidths[j] = strTable[i][j].size();
-                }
-            }
-
-            for (size_t i = 0; i < strTable.size(); i++)
-            {
-                for (size_t j = 0; j < strTable[i].size(); j++)
-                {
-                    std::cout << std::setw(colWidths[j] + 15) << std::left << strTable[i][j];
-                }
-                std::cout << std::endl;
-            }
-
-            // Print optimal table
-            std::cout << "\noptimal table\n"
-                      << std::endl;
-            strTable.clear();
-            strTable.resize(tableaus.back().size());
-            colWidths.clear();
-            colWidths.resize(tableaus.back()[0].size(), 0);
-
-            for (size_t i = 0; i < tableaus.back().size(); i++)
-            {
-                strTable[i].resize(tableaus.back()[i].size());
-                for (size_t j = 0; j < tableaus.back()[i].size(); j++)
-                {
-                    std::ostringstream oss;
-                    oss << tableaus.back()[i][j];
-                    strTable[i][j] = oss.str();
-
-                    if (strTable[i][j].size() > colWidths[j])
-                        colWidths[j] = strTable[i][j].size();
-                }
-            }
-
-            for (size_t i = 0; i < strTable.size(); i++)
-            {
-                for (size_t j = 0; j < strTable[i].size(); j++)
-                {
-                    std::cout << std::setw(colWidths[j] + 15) << std::left << strTable[i][j];
-                }
-                std::cout << std::endl;
-            }
-
-            // Print optimal changing table
-            std::cout << "\noptimal changing table\n"
-                      << std::endl;
-            strTable.clear();
-            strTable.resize(changingTable.size());
-            colWidths.clear();
-            colWidths.resize(changingTable[0].size(), 0);
-
-            for (size_t i = 0; i < changingTable.size(); i++)
-            {
-                strTable[i].resize(changingTable[i].size());
-                for (size_t j = 0; j < changingTable[i].size(); j++)
-                {
-                    std::ostringstream oss;
-                    oss << changingTable[i][j];
-                    strTable[i][j] = oss.str();
-
-                    if (strTable[i][j].size() > colWidths[j])
-                        colWidths[j] = strTable[i][j].size();
-                }
-            }
-
             for (size_t i = 0; i < strTable.size(); i++)
             {
                 for (size_t j = 0; j < strTable[i].size(); j++)
@@ -709,60 +786,256 @@ public:
                 std::cout << std::endl;
             }
         }
+
+        // Print optimal table
+        strTable.clear();
+        strTable.resize(tableaus.back().size());
+        colWidths.clear();
+        colWidths.resize(tableaus.back()[0].size(), 0);
+
+        for (size_t i = 0; i < tableaus.back().size(); i++)
+        {
+            strTable[i].resize(tableaus.back()[i].size());
+            for (size_t j = 0; j < tableaus.back()[i].size(); j++)
+            {
+                std::ostringstream oss;
+                oss << tableaus.back()[i][j];
+                strTable[i][j] = oss.str();
+
+                if (strTable[i][j].size() > colWidths[j])
+                    colWidths[j] = strTable[i][j].size();
+            }
+        }
+
+        this->optimalTableOut = strTable;
+
+        if (isConsoleOutput)
+        {
+            std::cout << "\noptimal table\n"
+                      << std::endl;
+            for (size_t i = 0; i < strTable.size(); i++)
+            {
+                for (size_t j = 0; j < strTable[i].size(); j++)
+                {
+                    std::cout << std::setw(colWidths[j] + 15) << std::left << strTable[i][j];
+                }
+                std::cout << std::endl;
+            }
+        }
+
+        // Print optimal changing table
+        strTable.clear();
+        strTable.resize(changingTable.size());
+        colWidths.clear();
+        colWidths.resize(changingTable[0].size(), 0);
+
+        for (size_t i = 0; i < changingTable.size(); i++)
+        {
+            strTable[i].resize(changingTable[i].size());
+            for (size_t j = 0; j < changingTable[i].size(); j++)
+            {
+                std::ostringstream oss;
+                oss << changingTable[i][j];
+                strTable[i][j] = oss.str();
+
+                if (strTable[i][j].size() > colWidths[j])
+                    colWidths[j] = strTable[i][j].size();
+            }
+        }
+
+        this->changingTableOut = strTable;
+
+        if (isConsoleOutput)
+        {
+            std::cout << "\noptimal changing table\n"
+                      << std::endl;
+            for (size_t i = 0; i < strTable.size(); i++)
+            {
+                for (size_t j = 0; j < strTable[i].size(); j++)
+                {
+                    std::cout << std::setw(colWidths[j] + 15) << std::left << strTable[i][j];
+                }
+                std::cout << std::endl;
+            }
+        }
+
+        this->matrixCbvOut = matrixCbv;
+        this->matrixBOut = matrixB;
+        this->matrixBNegOneOut = matrixBNegOne;
+        this->matrixCbvNegOneOut = matrixCbvNegOne;
 
         return make_tuple(changingTable, matrixCbv, matrixB, matrixBNegOne, matrixCbvNegOne, basicVarSpots);
     }
 
-    void testDoPreliminaries()
+    void DoMathPreliminaries(std::vector<double> &objFuncDouble, std::vector<std::vector<double>> &constraintsDouble, bool isMin = false, std::string currentDeltaSelection = "dStore0", bool absRule = false, bool optTabLockState = false, bool solveDelta = false, double valueRange = 0)
+    {
+        this->valueRange = valueRange;
+
+        std::vector<Symbolic> objFunc;
+        objFunc.reserve(objFuncDouble.size());
+        for (double val : objFuncDouble)
+        {
+            objFunc.push_back(Symbolic(val));
+        }
+
+        std::vector<std::vector<Symbolic>> constraints;
+        constraints.reserve(constraintsDouble.size());
+        for (const auto &row : constraintsDouble)
+        {
+            std::vector<Symbolic> symbolicRow;
+            symbolicRow.reserve(row.size());
+            for (double val : row)
+            {
+                symbolicRow.push_back(Symbolic(val));
+            }
+            constraints.push_back(std::move(symbolicRow));
+        }
+
+        // currentDeltaSelection = "o1";       // Updates objFunc[1]
+        // currentDeltaSelection = "c12";     // Updates constraints[1][2]
+        // currentDeltaSelection = "cRhs0";   // Updates constraints[0][size()-2]
+        // currentDeltaSelection = "dStore0"; // Does nothing
+
+        if (optTabLockState)
+        {
+            this->currentDeltaSelection = currentDeltaSelection;
+        }
+
+        if (currentDeltaSelection != "dStore0" && !optTabLockState)
+        {
+            // Update objFunc
+            for (size_t i = 0; i < objFunc.size(); ++i)
+            {
+                if (currentDeltaSelection == "o" + std::to_string(i))
+                {
+                    objFunc[i] = objFunc[i] + d;
+                }
+            }
+
+            // Update constraints
+            for (size_t i = 0; i < constraints.size(); ++i)
+            {
+                for (size_t j = 0; j < constraints[i].size(); ++j)
+                {
+                    if (currentDeltaSelection == "c" + std::to_string(i) + std::to_string(j))
+                    {
+                        constraints[i][j] = constraints[i][j] + d;
+                    }
+                }
+            }
+
+            // Update constraints right-hand side (RHS)
+            for (size_t i = 0; i < constraints.size(); ++i)
+            {
+                if (currentDeltaSelection == "cRhs" + std::to_string(i))
+                {
+                    constraints[i][constraints[i].size() - 2] =
+                        constraints[i][constraints[i].size() - 2] + d;
+                }
+            }
+        }
+
+        this->solveDelta = solveDelta;
+        auto [changingTable, matCbv, matB, matBNegOne, matCbvNegOne, basicVarSpots] = DoPreliminaries(objFunc, constraints, isMin, absRule, optTabLockState);
+    }
+
+    void
+    testDoPreliminaries()
     {
         std::cout << "\n=== Testing DoPreliminaries (requires DualSimplex) ===\n"
                   << std::endl;
-        // try
-        // {
+
         MathPreliminaries mp(true); // Enable console output for debugging
 
-        // Test with simple problem using Symbolic objects
-        std::vector<Symbolic> objFunc = {Symbolic(3.0), Symbolic(2.0)};
-        std::vector<std::vector<Symbolic>> constraints = {
-            {Symbolic(2.0), Symbolic(1.0), Symbolic(100.0), Symbolic(0.0)},
-            {Symbolic(1.0), Symbolic(1.0), Symbolic(80.0), Symbolic(0.0)},
-            {Symbolic(1.0), Symbolic(0.0), Symbolic(40.0+ mp.d), Symbolic(0.0)} // Use mp.d for symbolic variable
-        };
+        std::vector<double> objFunc = {3.0, 2.0};
+        std::vector<std::vector<double>> constraints = {
+            {2.0, 1.0, 100.0, 0.0},
+            {1.0, 1.0, 80.0, 0.0},
+            {1.0, 0.0, 45.0, 0.0}};
 
-        std::cout << "Calling DoPreliminaries..." << std::endl;
-        auto [changingTable, matCbv, matB, matBNegOne, matCbvNegOne, basicVarSpots] =
-            mp.DoPreliminaries(objFunc, constraints, false, false, false);
-        std::cout << "DoPreliminaries completed successfully" << std::endl;
-
-        std::cout << "  Basic variable positions: ";
-        for (int pos : basicVarSpots)
-        {
-            std::cout << pos << " ";
-        }
-        std::cout << std::endl;
-
-        // Print some results to verify the symbolic computation
-        std::cout << "  Changing table dimensions: " << changingTable.size()
-                  << "x" << (changingTable.empty() ? 0 : changingTable[0].size()) << std::endl;
-
-        if (!changingTable.empty() && !changingTable[0].empty())
-        {
-            std::cout << "  Sample changing table entry [0][0]: " << changingTable[0][0] << std::endl;
-        }
-
-        std::cout << "  Matrix Cbv dimensions: " << matCbv.rows() << "x" << matCbv.columns() << std::endl;
-        std::cout << "  Matrix B dimensions: " << matB.rows() << "x" << matB.columns() << std::endl;
-        // }
-        // catch (const std::exception &e)
-        // {
-        //     std::cout << "DoPreliminaries test failed" << std::endl;
-        //     std::cout << "  Error: " << e.what() << std::endl;
-        // }
-        // catch (...)
-        // {
-        //     std::cout << "DoPreliminaries test failed with unknown error" << std::endl;
-        // }
+        DoMathPreliminaries(objFunc, constraints, false, currentDeltaSelection);
     }
-};
 
-#endif // MATH_PRELIMINARIES_HPP
+    std::vector<std::string> symbolicToStringVector1d(const Symbolic &sym) const
+    {
+        std::vector<std::string> result;
+        int rows = sym.rows();
+        int cols = sym.columns();
+
+        result.reserve(rows);
+
+        for (int i = 0; i < rows; i++)
+        {
+            std::ostringstream oss;
+            // oss << "[";
+            for (int j = 0; j < cols; j++)
+            {
+                oss << sym(i, j);
+                if (j + 1 < cols)
+                    oss << " ";
+            }
+            // oss << "]";
+            result.push_back(oss.str());
+        }
+
+        return result;
+    }
+
+    std::vector<std::vector<std::string>> symbolicToStringVector2d(const Symbolic &sym) const
+    {
+        std::vector<std::vector<std::string>> result;
+        int rows = sym.rows();
+        int cols = sym.columns();
+
+        result.reserve(rows);
+
+        for (int i = 0; i < rows; i++)
+        {
+            std::vector<std::string> row;
+            row.reserve(cols);
+            for (int j = 0; j < cols; j++)
+            {
+                std::ostringstream oss;
+                oss << sym(i, j); // Each element as a single string
+                row.push_back(oss.str());
+            }
+            result.push_back(row);
+        }
+
+        return result;
+    }
+
+    std::vector<std::vector<std::string>> GetChangingTable() { return changingTableOut; }
+    std::vector<std::vector<std::string>> GetOptimalTable() { return optimalTableOut; }
+    std::vector<std::vector<std::string>> GetInitialTable() { return initialTableOut; }
+
+    std::vector<std::string> getMatrixCbv() const // 1d
+    {
+        return symbolicToStringVector1d(matrixCbvOut);
+    }
+
+    std::vector<std::vector<std::string>> getMatrixB() const // 2d
+    {
+        return symbolicToStringVector2d(matrixBOut);
+    }
+
+    std::vector<std::vector<std::string>> getMatrixBNegOne() const // 2d
+    {
+        return symbolicToStringVector2d(matrixBNegOneOut);
+    }
+
+    std::vector<std::string> getMatrixCbvNegOne() const // 1d
+    {
+        return symbolicToStringVector1d(matrixCbvNegOneOut);
+    }
+
+    std::vector<std::string> getHeaderRow() { return headerRowOut; }
+
+    bool getShouldReOptimize() { return shouldReoptimize; }
+
+    std::vector<int> getPivotCols() { return pivotCols; }
+    std::vector<int> getPivotRows() { return pivotRows; }
+
+    std::vector<std::vector<std::vector<double>>> getReOptTableaus() { return reOptTableaus; }
+
+};

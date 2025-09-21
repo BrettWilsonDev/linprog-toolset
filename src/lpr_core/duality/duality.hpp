@@ -35,6 +35,10 @@ private:
     std::string strMin;
     std::string strDualMin;
 
+    std::string dualityResult;
+
+    bool isMin;
+
 public:
     Duality(bool isConsoleOutput = false) : isConsoleOutput(isConsoleOutput)
     {
@@ -43,6 +47,8 @@ public:
         objFunc = {0.0, 0.0};
         optimalSolution = 0.0;
         constraints = {{0.0, 0.0, 0.0, 0.0}};
+
+        isMin = false;
     }
 
     ~Duality()
@@ -70,35 +76,72 @@ public:
         return result;
     }
 
-    void PrintDuality()
+    void PrintDuality(bool printToConsole = true)
     {
+        std::ostringstream oss;
+
         tObjFunc = objFunc;
         tDualObjFunc = dualObjFunc;
         tObjFunc.push_back(optimalSolution);
         tDualObjFunc.push_back(dualOptimalSolution);
 
-        // print header
+        headerString.back() = "Ref";
+
+        headerString.push_back("Sign");
+        headerString.push_back("Rhs");
+        headerString.push_back("Slack");
+
+        // headers
         for (const auto &header : headerString)
         {
-            std::cout << std::setw(8) << header << "  ";
+            // oss << std::setw(8) << "[green]" << header << "  ";
+            oss << std::setw(8) << " " << header << "  ";
         }
-        std::cout << "\n\n";
+        oss << "\n\n";
 
-        // display the objective function
-        std::cout << std::setw(8) << strDualMin + " z" << "  ";
-        for (const auto &val : tObjFunc)
+        if (this->isMin)
         {
-            std::cout << std::setw(8) << std::fixed << std::setprecision(3) << val << "  ";
+            strMin = "Max-Z";
+            strDualMin = "Min-Z";
         }
-        std::cout << "\n\n";
+        else
+        {
+            strMin = "Min-Z";
+            strDualMin = "Max-Z";
+        }
 
+        // primal obj
+        oss << std::setw(8) << strDualMin << "  ";
+        // for (const auto &val : tObjFunc)
+        // {
+        //     if (val == tObjFunc.back())
+        //     {
+        //         oss << std::setw(8) << std::fixed << std::setprecision(3) << "[turquoise]" << val << "  ";
+        //     }
+        //     else
+        //     {
+        //         oss << std::setw(8) << std::fixed << std::setprecision(3) << "[green]" << val << "  ";
+        //     }
+        // }
+
+        for (size_t i = 0; i < tObjFunc.size(); i++)
+        {
+            if (i == tObjFunc.size() - 1)
+            {
+                oss << std::setw(8) << std::fixed << std::setprecision(3) << "[green]" << tObjFunc[i] << "  ";
+            }
+            else
+            {
+                oss << std::setw(8) << std::fixed << std::setprecision(3) << "[turquoise]" << tObjFunc[i] << "  ";
+            }
+        }
+        oss << "\n\n";
+
+        // constraints
         auto displayCons = constraintsLhs;
-
-        // build display cons
         for (size_t i = 0; i < constraintsLhs.size(); ++i)
         {
             displayCons[i].push_back(cellRef[i]);
-            // displayCons[i].push_back(constraints[i][constraints[i].size() - 1] == 0 ? 0.0 : 1.0);
             if (constraints[i][constraints[i].size() - 1] == 1)
             {
                 displayCons[i].push_back(0);
@@ -110,98 +153,136 @@ public:
             }
             displayCons[i].push_back(constraints[i][constraints[i].size() - 2]);
 
-            double tSlack = displayCons[i][displayCons[i].size() - 1] - displayCons[i][displayCons[i].size() - 3];
-
+            double tSlack = displayCons[i].back() - displayCons[i][displayCons[i].size() - 3];
             displayCons[i].push_back(tSlack);
         }
 
-        // display the constraints
         for (size_t i = 0; i < displayCons.size(); ++i)
         {
-            std::cout << std::setw(8) << "c" + std::to_string(i + 1) << "  ";
+            oss << std::setw(8) << "c" + std::to_string(i + 1) << "  ";
             for (size_t j = 0; j < displayCons[i].size(); ++j)
             {
                 if (j == displayCons[i].size() - 3)
                 {
                     std::string sign = displayCons[i][j] == 0 ? "<=" : ">=";
-                    std::cout << std::setw(8) << sign << "  ";
+                    oss << std::setw(8) << sign << "  ";
+                }
+                else if (j == displayCons[i].size() - 2)
+                {
+                    oss << std::setw(8) << std::fixed << std::setprecision(3) << "[pink]" << displayCons[i][j] << "  ";
                 }
                 else
                 {
-                    std::cout << std::setw(8) << std::fixed << std::setprecision(3)
-                              << displayCons[i][j] << "  ";
+                    oss << std::setw(8) << std::fixed << std::setprecision(3) << displayCons[i][j] << "  ";
                 }
             }
-            std::cout << "\n";
+            oss << "\n";
         }
-        std::cout << "\n";
+        oss << "\n";
 
-        // optimal variables
-        std::cout << std::setw(8) << "opt" << "  ";
+        // primal opt
+        oss << std::setw(8) << "opt" << "  ";
         for (const auto &var : changingVars)
         {
-            std::cout << std::setw(8) << std::fixed << std::setprecision(3) << var << "  ";
+            oss << std::setw(8) << std::fixed << std::setprecision(3) << "[yellow]" << var << "  ";
         }
-        std::cout << "\n\n";
+        oss << "\n\n";
 
-        // dual ==============================================
-        std::cout << std::string(100, '=') << "\n\n";
+        // separator
+        oss << std::string(100, '=') << "\n\n";
 
-        // print dual header
+        dualHeaderString.back() = "Ref";
+
+        dualHeaderString.push_back("Sign");
+        dualHeaderString.push_back("Rhs");
+        dualHeaderString.push_back("Slack");
+
+        // dual header
         for (const auto &header : dualHeaderString)
         {
-            std::cout << std::setw(8) << header << "  ";
+            oss << std::setw(8) << header << "  ";
         }
-        std::cout << "\n\n";
+        oss << "\n\n";
 
-        // display the dual objective function
-        std::cout << std::setw(8) << strMin + " z" << "  ";
-        for (const auto &val : tDualObjFunc)
+        // dual obj
+        oss << std::setw(8) << strMin << "  ";
+        // for (const auto &val : tDualObjFunc)
+        // {
+        //     oss << std::setw(8) << std::fixed << std::setprecision(3) << val << "  ";
+        // }
+
+        for (size_t i = 0; i < tDualObjFunc.size(); i++)
         {
-            std::cout << std::setw(8) << std::fixed << std::setprecision(3) << val << "  ";
+            if (i == tDualObjFunc.size() - 1)
+            {
+                oss << std::setw(8) << std::fixed << std::setprecision(3) << "[green]" << tDualObjFunc[i] << "  ";
+            }
+            else
+            {
+                oss << std::setw(8) << std::fixed << std::setprecision(3) << "[pink]" << tDualObjFunc[i] << "  ";
+            }
         }
-        std::cout << "\n\n";
+        oss << "\n\n";
 
+        // dual constraints
         auto dualDisplayCons = dualConstraintsLhs;
-
-        // build dual display cons
         for (size_t i = 0; i < dualConstraintsLhs.size(); ++i)
         {
             dualDisplayCons[i].push_back(dualCellRef[i]);
             dualDisplayCons[i].push_back(1);
             dualDisplayCons[i].push_back(objFunc[i]);
-            double tSlack = dualDisplayCons[i][dualDisplayCons[i].size() - 1] - dualDisplayCons[i][dualDisplayCons[i].size() - 3];
+            double tSlack = dualDisplayCons[i].back() - dualDisplayCons[i][dualDisplayCons[i].size() - 3];
             dualDisplayCons[i].push_back(tSlack);
         }
 
-        // display the dual constraints
         for (size_t i = 0; i < dualDisplayCons.size(); ++i)
         {
-            std::cout << std::setw(8) << "c" + std::to_string(i + 1) << "  ";
+            oss << std::setw(8) << "c" + std::to_string(i + 1) << "  ";
             for (size_t j = 0; j < dualDisplayCons[i].size(); ++j)
             {
                 if (j == dualDisplayCons[i].size() - 3)
                 {
                     std::string sign = dualDisplayCons[i][j] == 0 ? "<=" : ">=";
-                    std::cout << std::setw(8) << sign << "  ";
+                    oss << std::setw(8) << sign << "  ";
+                }
+                else if (j == dualDisplayCons[i].size() - 2)
+                {
+                    oss << std::setw(8) << std::fixed << std::setprecision(3) << "[turquoise]" << dualDisplayCons[i][j] << "  ";
                 }
                 else
                 {
-                    std::cout << std::setw(8) << std::fixed << std::setprecision(3)
-                              << dualDisplayCons[i][j] << "  ";
+                    oss << std::setw(8) << std::fixed << std::setprecision(3) << dualDisplayCons[i][j] << "  ";
                 }
             }
-            std::cout << "\n";
+            oss << "\n";
         }
-        std::cout << "\n";
+        oss << "\n";
 
-        // optimal dual variables
-        std::cout << std::setw(8) << "opt" << "  ";
+        // dual opt
+        oss << std::setw(8) << "opt" << "  ";
         for (const auto &var : dualChangingVars)
         {
-            std::cout << std::setw(8) << std::fixed << std::setprecision(3) << var << "  ";
+            oss << std::setw(8) << std::fixed << std::setprecision(3) << "[yellow]" << var << "  ";
         }
-        std::cout << "\n";
+        oss << "\n";
+
+        // oss << std::string(100, '=') << "\n\n";
+        // oss << std::string(1, '-//') << "\n\n";
+        oss << "-b" << "\n\n";
+        oss << "-b" << "\n\n";
+
+        // duality check
+        if (optimalSolution == dualOptimalSolution)
+            oss << "\nStrong Duality " << optimalSolution << " is equal to " << dualOptimalSolution << "\n";
+        else
+            oss << "\nWeak Duality " << optimalSolution << " is not equal to " << dualOptimalSolution << "\n";
+
+        // store results
+        dualityResult += oss.str();
+
+        // optional console printing
+        if (printToConsole)
+            std::cout << oss.str();
     }
 
     std::tuple<std::vector<double>, double, std::vector<double>,
@@ -272,12 +353,12 @@ public:
             dualObjFunc.push_back(constraints[i][constraints[i].size() - 2]);
         }
 
-        for (const auto &value : dualObjFunc)
-        {
-            std::cout << value << " ";
-        }
-        std::cout << "\n"
-                  << std::endl;
+        // for (const auto &value : dualObjFunc)
+        // {
+        //     std::cout << value << " ";
+        // }
+        // std::cout << "\n"
+        //           << std::endl;
 
         dualConstraints = TransposeMat(constraintsLhs);
 
@@ -307,8 +388,8 @@ public:
         auto a2 = dualObjFunc;
         auto b2 = dualConstraints;
 
-        std::cout << "\ndual obj\n"
-                  << std::endl;
+        // std::cout << "\ndual obj\n"
+        //           << std::endl;
 
         auto [tableaus2, dualChangingVars, dualOptimalSolution, _A, _B, __C] =
             dual->DoDualSimplex(a2, b2, isMin);
@@ -358,10 +439,11 @@ public:
         dualHeaderString.push_back("z");
         dualHeaderString.insert(dualHeaderString.begin(), "dual");
 
+        PrintDuality(isConsoleOutput);
         if (isConsoleOutput)
         {
-            PrintDuality();
-            std::cout << "\n" << std::endl; 
+            std::cout << "\n"
+                      << std::endl;
             if (optimalSolution == dualOptimalSolution)
             {
                 std::cout << "Strong Duality " << optimalSolution
@@ -385,7 +467,12 @@ public:
         objFunc = objFuncPassed;
         constraints = constraintsPassed;
 
+        this->isMin = isMin;
+
         DoDuality(objFunc, constraints, isMin);
+
+        std::cout << dualityResult << "\n"
+                  << std::endl;
     }
 
     void PrintShadowPrice()
@@ -397,4 +484,6 @@ public:
         }
         std::cout << "\n";
     }
+
+    std::string getOutput() { return dualityResult; }
 };

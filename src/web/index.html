@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Linear Programming Toolset</title>
+  <!-- <link rel="stylesheet" href="styles.css"> -->
+  <style>
+    body {
+      display: flex;
+      font-family: sans-serif;
+      margin: 0;
+      height: 100vh;
+    }
+
+    aside {
+      width: 220px;
+      background: #222;
+      color: #eee;
+      padding: 1rem;
+    }
+
+    aside h2 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    aside button {
+      display: block;
+      width: 100%;
+      margin: 0.25rem 0;
+      padding: 0.5rem;
+      background: #444;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    aside button:hover {
+      background: #666;
+    }
+
+    main {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    #form textarea {
+      width: 100%;
+      height: 120px;
+    }
+
+    #results {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: #f4f4f4;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+
+<body>
+  <aside>
+    <h2>Algorithms</h2>
+    <button onclick="loadUI('dual_simplex')">dual Simplex</button>
+    <button onclick="loadUI('two_phase_simplex')">Two Phase Simplex</button>
+    <button onclick="loadUI('graphical_solver')">graphical solver</button>
+    <button onclick="loadUI('goal_penalties_simplex')">goal penalties simplex</button>
+    <button onclick="loadUI('goal_preemptive_simplex')">goal preemptive simplex</button>
+    <button onclick="loadUI('math_preliminaries')">math preliminaries</button>
+    <button onclick="loadUI('sensitivity_analysis')">sensitivity analysis</button>
+    <button onclick="loadUI('duality')">duality</button>
+    <button onclick="loadUI('dea')">Data Envelopment Analysis</button>
+    <button onclick="loadUI('adding_activities_and_constraints')">Adding Activities And Constraints</button>
+    <button onclick="loadUI('simplex')">Simplex</button>
+  </aside>
+
+  <main>
+    <h1 id="title">Select an Algorithm</h1>
+    <div id="form"></div>
+    <div id="results"></div>
+  </main>
+
+  <!-- Load WASM + main app -->
+  <script type="module">
+    import ModuleFactory from "./wasm/linprog-toolset.js";
+    import * as dual_simplex from "./ui/dual_simplex.js";
+    import * as two_phase_simplex from "./ui/two_phase_simplex.js";
+    import * as graphical_solver from "./ui/graphical_solver.js";
+    import * as goal_penalties_simplex from "./ui/goal_penalties_simplex.js";
+    import * as goal_preemptive_simplex from "./ui/goal_preemptive_simplex.js";
+    import * as math_preliminaries from "./ui/math_preliminaries.js";
+    import * as sensitivity_analysis from "./ui/sensitivity_analysis.js";
+    import * as duality from "./ui/duality.js";
+    import * as dea from "./ui/dea.js";
+    import * as adding_activities_and_constraints from "./ui/adding_activities_and_constraints.js";
+    import * as simplex from "./ui/simplex.js";
+
+    // Single global WASM module
+    let Module = null;
+
+    async function initWasm() {
+      if (!Module) {
+        Module = await ModuleFactory();
+        // window.Module = Module;
+        console.log("WASM module initialized");
+      }
+      return Module;
+    }
+
+    window.onload = async function () {
+      await initWasm();
+    };
+
+    // Store UI modules
+    const uiModules = {
+      dual_simplex,
+      two_phase_simplex,
+      graphical_solver,
+      goal_penalties_simplex,
+      goal_preemptive_simplex,
+      math_preliminaries,
+      sensitivity_analysis,
+      duality,
+      dea,
+      adding_activities_and_constraints,
+      simplex,
+    };
+
+    // Global loader (called by sidebar buttons)
+    window.loadUI = async (algo) => {
+      const module = uiModules[algo];
+      if (!module) {
+        document.getElementById("title").innerText = "Unknown algorithm";
+        return;
+      }
+
+      // document.getElementById("title").innerText = algo.toUpperCase();
+      document.getElementById("title").innerText = "";
+      document.getElementById("form").innerHTML = "";
+      document.getElementById("results").innerHTML = "";
+
+      // Ensure WASM is ready before rendering
+      const wasm = await initWasm();
+
+      module.render(document.getElementById("form"), document.getElementById("results"), wasm);
+    };
+
+    window.verbose = function () {
+      Module.toggleVerbose();
+    }
+  </script>
+</body>
+
+</html>

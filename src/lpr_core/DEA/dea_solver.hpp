@@ -1,9 +1,9 @@
-#ifndef DEA_SOLVER_HPP
-#define DEA_SOLVER_HPP
+#pragma once
 
 #include <vector>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 #include <string>
 #include <numeric>
 #include <algorithm>
@@ -31,6 +31,7 @@ private:
 
     std::string problemType;
     bool isMin;
+    mutable std::ostringstream outputStream; // Made mutable to allow modification in const methods
 
 public:
     DEASolver(bool consoleOutput = false) : isConsoleOutput(consoleOutput)
@@ -54,6 +55,8 @@ public:
 
         problemType = "Max";
         isMin = false;
+        outputStream.str(""); // Initialize the stringstream
+        outputStream.clear(); // Ensure the stream is in a good state
     }
 
     std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
@@ -97,11 +100,8 @@ public:
         std::vector<double> conRow;
     };
 
-    TableResult buildTable(const std::vector<std::vector<double>> &LpInputs,
-                           const std::vector<std::vector<double>> &LpOutputs,
-                           int currentSelection = 0)
+    TableResult buildTable(const std::vector<std::vector<double>> &LpInputs, const std::vector<std::vector<double>> &LpOutputs, int currentSelection = 0)
     {
-
         int tabWLen = LpInputs.back().size() + LpOutputs.back().size();
 
         // Build bottom rows
@@ -204,27 +204,24 @@ public:
         std::vector<double> changingVars;
     };
 
-    SolveResult solveTable(const std::vector<std::vector<double>> &table,
-                           const std::vector<double> &objfunc,
-                           const std::vector<std::vector<double>> &constraints,
-                           const std::vector<double> &conRow,
-                           bool isMin = false)
+    SolveResult solveTable(const std::vector<std::vector<double>> &table, const std::vector<double> &objfunc, const std::vector<std::vector<double>> &constraints, const std::vector<double> &conRow, bool isMin = false)
     {
-
         auto result = dual.DoDualSimplex(objfunc, constraints, isMin);
         auto changingVars = result.changingVars;
         double optimalSolution = result.optimalSolution;
 
-        if (isConsoleOutput)
+        // if (isConsoleOutput)
+        // {
+        // outputStream << "\n"; 
+        outputStream << "changingVars: ";
+        for (double var : changingVars)
         {
-            std::cout << "changingVars: ";
-            for (double var : changingVars)
-            {
-                std::cout << var << " ";
-            }
-            std::cout << std::endl;
-            std::cout << "optimalSolution: " << optimalSolution << std::endl;
+            outputStream << var << " ";
         }
+        outputStream << "\n";
+        outputStream << "optimalSolution: " << optimalSolution << "\n";
+        // outputStream << "\n\n";
+        // }
 
         // Build mathCons (constraints without last column)
         std::vector<std::vector<double>> mathCons;
@@ -294,10 +291,11 @@ public:
         std::vector<std::vector<double>> allChangingVars;
     };
 
-    DEAResult doDEA(const std::vector<std::vector<double>> &LpInputs,
-                    const std::vector<std::vector<double>> &LpOutputs,
-                    bool isMin = false)
+    DEAResult doDEA(const std::vector<std::vector<double>> &LpInputs, const std::vector<std::vector<double>> &LpOutputs, bool isMin = false)
     {
+        // Clear the output stream at the start of doDEA to ensure fresh output
+        outputStream.str("");
+        outputStream.clear();
 
         std::vector<std::vector<std::vector<double>>> tables;
         std::vector<std::vector<double>> allRangesO;
@@ -367,23 +365,24 @@ public:
         header.push_back("rhs");
 
         // Console output if enabled
-        if (isConsoleOutput)
-        {
+        // if (isConsoleOutput)
+        // {
+            outputStream << "\n";
             for (int i = 0; i < tables.size(); ++i)
             {
                 // Print changing variables
                 for (double var : allChangingVars[i])
                 {
-                    std::cout << std::setw(10) << std::setprecision(4) << std::fixed << var << " ";
+                    outputStream << std::setw(10) << std::setprecision(4) << std::fixed << var << " ";
                 }
-                std::cout << std::endl;
+                outputStream << "\n";
 
                 // Print header
                 for (const std::string &h : header)
                 {
-                    std::cout << std::setw(10) << h << " ";
+                    outputStream << std::setw(10) << h << " ";
                 }
-                std::cout << std::endl;
+                outputStream << "\n";
 
                 // Print table
                 for (int j = 0; j < tables[i].size(); ++j)
@@ -393,69 +392,78 @@ public:
                         if (k == LpOutputs.back().size() + LpInputs.back().size() + 1)
                         {
                             // Sign column
-                            if (tables[i][j][k] == 0)
+                            if (tables[i][j][k] == 0.0)
                             {
-                                std::cout << std::setw(10) << "    <=" << " ";
+                                outputStream << std::setw(10) << "    <=" << " ";
                             }
-                            else if (tables[i][j][k] == 1)
+                            else if (tables[i][j][k] == 1.0)
                             {
-                                std::cout << std::setw(10) << "    >=" << " ";
+                                outputStream << std::setw(10) << "    >=" << " ";
                             }
                             else
                             {
-                                std::cout << std::setw(10) << "     =" << " ";
+                                outputStream << std::setw(10) << "     =" << " ";
                             }
                         }
                         else
                         {
-                            std::cout << std::setw(10) << std::setprecision(4) << std::fixed
-                                      << tables[i][j][k] << " ";
+                            outputStream << std::setw(10) << std::setprecision(4) << std::fixed
+                                         << tables[i][j][k] << " ";
                         }
                     }
-                    std::cout << std::endl;
+                    outputStream << "\n";
                 }
 
-                std::cout << "\nranges:" << std::endl
-                          << std::endl;
+                outputStream << "\nranges:\n\n";
 
                 // Output ranges
                 for (int j = 0; j < LpOutputs.back().size(); ++j)
                 {
-                    std::cout << std::setw(10) << ("o" + std::to_string(j + 1)) << " ";
+                    outputStream << std::setw(10) << ("o" + std::to_string(j + 1)) << " ";
                 }
-                std::cout << std::endl;
+                outputStream << "\n";
 
                 for (int j = 0; j < LpOutputs.back().size(); ++j)
                 {
-                    std::cout << std::setw(10) << std::setprecision(6) << std::fixed
-                              << allRangesO[i][j] << " ";
+                    outputStream << std::setw(10) << std::setprecision(6) << std::fixed
+                                 << allRangesO[i][j] << " ";
                 }
-                std::cout << "  Output total: " << allOutputTotals[i] << std::endl;
+                outputStream << "  Output total: " << allOutputTotals[i] << "\n";
 
-                std::cout << std::endl;
+                outputStream << "\n";
 
                 // Input ranges
                 for (int j = 0; j < LpInputs.back().size(); ++j)
                 {
-                    std::cout << std::setw(10) << ("i" + std::to_string(j + 1)) << " ";
+                    outputStream << std::setw(10) << ("i" + std::to_string(j + 1)) << " ";
                 }
-                std::cout << std::endl;
+                outputStream << "\n";
 
                 for (int j = 0; j < LpInputs.back().size(); ++j)
                 {
-                    std::cout << std::setw(10) << std::setprecision(6) << std::fixed
-                              << allRangesI[i][j] << " ";
+                    outputStream << std::setw(10) << std::setprecision(6) << std::fixed
+                                 << allRangesI[i][j] << " ";
                 }
-                std::cout << "   Input total: " << allInputTotals[i] << std::endl;
+                outputStream << "   Input total: " << allInputTotals[i] << "\n";
 
-                std::cout << "\n\nTotals:\n\n"
-                          << allOutputTotals[i]
-                          << "\ndivided by\n"
-                          << allInputTotals[i]
-                          << "\n\n= " << (allOutputTotals[i] / allInputTotals[i]) << std::endl;
-                std::cout << std::endl;
+                outputStream << "\n\nTotals:\n\n"
+                             << allOutputTotals[i]
+                             << "\ndivided by\n"
+                             << allInputTotals[i]
+                             << "\n\n= " << (allOutputTotals[i] / allInputTotals[i]) << "\n\n";
             }
-        }
+        // }
+
+        // Store results in member variables for getter access
+        this->tables = tables;
+        this->header = header;
+        this->allInputTotals = allInputTotals;
+        this->allOutputTotals = allOutputTotals;
+        this->allRangesO = allRangesO;
+        this->allRangesI = allRangesI;
+        this->changingVars = allChangingVars;
+
+        printOutput();
 
         return {tables, header, allInputTotals, allOutputTotals, allRangesO, allRangesI, allChangingVars};
     }
@@ -470,7 +478,14 @@ public:
     const std::vector<std::vector<double>> &getChangingVars() const { return changingVars; }
 
     // Setters for configuration
-    void setConsoleOutput(bool enable) { isConsoleOutput = enable; }
+    void setConsoleOutput(bool enable)
+    {
+        isConsoleOutput = enable;
+        if (!enable)
+        {
+            clearOutput(); // Clear output if console output is disabled
+        }
+    }
     void setProblemType(const std::string &type)
     {
         problemType = type;
@@ -480,13 +495,16 @@ public:
     // Utility methods
     void printEfficiencyScores() const
     {
-        std::cout << "\nEfficiency Scores:" << std::endl;
-        for (int i = 0; i < allOutputTotals.size(); ++i)
-        {
-            double efficiency = allOutputTotals[i] / allInputTotals[i];
-            std::cout << "DMU " << (i + 1) << ": " << std::setprecision(6) << std::fixed
-                      << efficiency << std::endl;
-        }
+        // if (isConsoleOutput)
+        // {
+            outputStream << "\nEfficiency Scores:\n";
+            for (int i = 0; i < allOutputTotals.size(); ++i)
+            {
+                double efficiency = allOutputTotals[i] / allInputTotals[i];
+                outputStream << "DMU " << (i + 1) << ": " << std::setprecision(6) << std::fixed
+                             << efficiency << "\n";
+            }
+        // }
     }
 
     std::vector<double> getEfficiencyScores() const
@@ -498,6 +516,26 @@ public:
         }
         return scores;
     }
-};
 
-#endif // DEA_SOLVER_HPP
+    // New method to retrieve the accumulated output
+    std::string getOutput() const
+    {
+        return outputStream.str();
+    }
+
+    // New method to print the accumulated output to console
+    void printOutput() const
+    {
+        if (isConsoleOutput)
+        {
+            std::cout << outputStream.str();
+        }
+    }
+
+    // New method to clear the output stream
+    void clearOutput()
+    {
+        outputStream.str("");
+        outputStream.clear();
+    }
+};

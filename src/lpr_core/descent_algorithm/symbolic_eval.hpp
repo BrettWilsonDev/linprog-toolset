@@ -11,9 +11,9 @@
 namespace SymbolicCpp
 {
 
-    double error(string s)
+    double error(std::string s)
     {
-        cerr << "Error: " << s << ", using 0." << endl;
+        std::cerr << "Error: " << s << ", using 0." << std::endl;
         return 0.0;
     }
 
@@ -22,22 +22,22 @@ namespace SymbolicCpp
     private:
         int is_value;
         Symbolic v;
-        string t;
-        static map<string, Symbolic> values;
+        std::string t;
+        static std::map<std::string, Symbolic> values;
 
     public:
         token() : is_value(0), v(0), t("") {};
         token(const Symbolic &s) : is_value(1), v(s), t("") {};
-        token(const string &s) : is_value(0), v(0), t(s) {};
+        token(const std::string &s) : is_value(0), v(0), t(s) {};
         Symbolic value();
-        string name() { return t; }
+        std::string name() { return t; }
         int isvalue() { return is_value; }
         Symbolic set(const Symbolic &d) { return values[t] = d; }
-        int operator==(string s) { return (!is_value) && (t == s); }
-        friend ostream &operator<<(ostream &, token);
+        int operator==(std::string s) { return (!is_value) && (t == s); }
+        friend std::ostream &operator<<(std::ostream &, token);
     };
 
-    map<string, Symbolic> token::values;
+    std::map<std::string, Symbolic> token::values;
 
     Symbolic token::value()
     {
@@ -55,7 +55,7 @@ namespace SymbolicCpp
         return Symbolic(t);
     }
 
-    ostream &operator<<(ostream &o, token t)
+    std::ostream &operator<<(std::ostream &o, token t)
     {
         if (t.is_value)
             o << t.v;
@@ -64,12 +64,12 @@ namespace SymbolicCpp
         return o;
     }
 
-    vector<token>
-    get_tokens(string s, string separator[], string ignore[])
+    std::vector<token>
+    get_tokens(std::string s, std::string separator[], std::string ignore[])
     {
         int i = 0, j, istoken = 0;
-        vector<token> v;
-        string value = "";
+        std::vector<token> v;
+        std::string value = "";
         while (i < (int)s.length())
         {
             istoken = 0;
@@ -89,7 +89,23 @@ namespace SymbolicCpp
                     istoken = 1;
                 }
             if (!istoken)
+            {
                 value += s[i++];
+                // Check for implicit multiplication (e.g., 2x -> 2 * x)
+                if (i < (int)s.length() && value.length() > 0)
+                {
+                    char last = value.back();
+                    char next = s[i];
+                    bool last_is_digit = isdigit(last) || last == '.';
+                    bool next_is_alpha = isalpha(next);
+                    if (last_is_digit && next_is_alpha)
+                    {
+                        v.push_back(token(value));
+                        v.push_back(token(std::string("*")));
+                        value = "";
+                    }
+                }
+            }
             else if (value != "")
             {
                 v.push_back(token(value));
@@ -107,29 +123,29 @@ namespace SymbolicCpp
     Symbolic sadd(const Symbolic &x, const Symbolic &y) { return x + y; }
     Symbolic ssub(const Symbolic &x, const Symbolic &y) { return x - y; }
 
-    Symbolic ssqrt(const vector<Symbolic> &x) { return sqrt(x[0]); }
-    Symbolic scos(const vector<Symbolic> &x) { return cos(x[0]); }
-    Symbolic ssin(const vector<Symbolic> &x) { return sin(x[0]); }
-    Symbolic stan(const vector<Symbolic> &x) { return tan(x[0]); }
-    Symbolic sexp(const vector<Symbolic> &x) { return exp(x[0]); }
-    Symbolic sln(const vector<Symbolic> &x) { return ln(x[0]); }
-    Symbolic slog(const vector<Symbolic> &x) { return log(x[0], x[1]); }
-    Symbolic sdf(const vector<Symbolic> &x) { return df(x[0], x[1]); }
-    Symbolic ssubst(const vector<Symbolic> &x) { return x[0].subst(x[1], x[2]); }
-    Symbolic sfunc(const vector<Symbolic> &x) { return x[0][x[1]]; }
+    Symbolic ssqrt(const std::vector<Symbolic> &x) { return sqrt(x[0]); }
+    Symbolic scos(const std::vector<Symbolic> &x) { return cos(x[0]); }
+    Symbolic ssin(const std::vector<Symbolic> &x) { return sin(x[0]); }
+    Symbolic stan(const std::vector<Symbolic> &x) { return tan(x[0]); }
+    Symbolic sexp(const std::vector<Symbolic> &x) { return exp(x[0]); }
+    Symbolic sln(const std::vector<Symbolic> &x) { return ln(x[0]); }
+    Symbolic slog(const std::vector<Symbolic> &x) { return log(x[0], x[1]); }
+    Symbolic sdf(const std::vector<Symbolic> &x) { return df(x[0], x[1]); }
+    Symbolic ssubst(const std::vector<Symbolic> &x) { return x[0].subst(x[1], x[2]); }
+    Symbolic sfunc(const std::vector<Symbolic> &x) { return x[0][x[1]]; }
 
     Symbolic evaluate(token t);
 
     struct function
     {
-        string name;
+        std::string name;
         int args;
-        Symbolic (*impl)(const vector<Symbolic> &);
+        Symbolic (*impl)(const std::vector<Symbolic> &);
     };
 
-    Symbolic evaluate_tokens(vector<token> v)
+    Symbolic evaluate_tokens(std::vector<token> v)
     {
-        vector<token> v2, v3;
+        std::vector<token> v2, v3;
         int parenthesis, i, j, k;
         // function names, arity, and their implementation
         function functions[] = {
@@ -148,7 +164,7 @@ namespace SymbolicCpp
         // default left operands for binary operators
         double initleft[] = {1.0, 1.0, 0.0};
         // binary operators and their implementation
-        string opnames[][4] = {{"^", ""}, {"*", "/", ""}, {"+", "-", ""}};
+        std::string opnames[][4] = {{"^", ""}, {"*", "/", ""}, {"+", "-", ""}};
         Symbolic (*opimpl[][3])(const Symbolic &, const Symbolic &) =
             {{spow}, {smul, sdiv}, {sadd, ssub}};
 
@@ -200,7 +216,7 @@ namespace SymbolicCpp
                 {
                     if (j + functions[i].args < (int)v2.size())
                     {
-                        vector<Symbolic> args;
+                        std::vector<Symbolic> args;
                         for (k = 1; k <= functions[i].args; k++)
                             args.push_back(evaluate(v2[j + k]));
                         v.push_back(token(functions[i].impl(args)));
@@ -228,8 +244,20 @@ namespace SymbolicCpp
                         if (v2.size())
                             v2.pop_back();
                         if (j + 1 < (int)v.size())
-                            v2.push_back(token(opimpl[k][i](evaluate(left),
-                                                            evaluate(v[++j]))));
+                        {
+                            Symbolic left_val = evaluate(left);
+                            Symbolic right_val = evaluate(v[++j]);
+                            // Simplify 1*x or x*1 to x
+                            if (opnames[k][i] == "*" && 
+                                (left_val == Symbolic(1) || right_val == Symbolic(1)))
+                            {
+                                v2.push_back(token(left_val == Symbolic(1) ? right_val : left_val));
+                            }
+                            else
+                            {
+                                v2.push_back(token(opimpl[k][i](left_val, right_val)));
+                            }
+                        }
                         else
                             return error(opnames[k][i] + " without second argument");
                         break;
@@ -243,7 +271,7 @@ namespace SymbolicCpp
         if (v.size() != 1)
         {
             for (j = 0; j < (int)v.size(); j++)
-                cerr << "token " << j + 1 << " : " << v[j] << endl;
+                std::cerr << "token " << j + 1 << " : " << v[j] << std::endl;
             return error("could not evaluate expression");
         }
         return v[0].value();
@@ -251,31 +279,32 @@ namespace SymbolicCpp
 
     Symbolic evaluate(token t)
     {
-        vector<token> v;
+        std::vector<token> v;
         v.push_back(t);
         return evaluate_tokens(v);
     }
 
-    Symbolic evaluateformula(const std::string &expression)
+    Symbolic evaluateformula(std::string &expression)
     {
-        static string ws[] = {" ", "\t", "\n", "\r", ""};
-        static string separator[] = {"=", "+", "-", "*", "/", "^", "(", ")", ",", ""};
+        static std::string ws[] = {" ", "\t", "\n", "\r", ""};
+        static std::string separator[] = {"=", "+", "-", "*", "/", "^", "(", ")", ",", ""};
 
         // Optionally check that expression ends with ';'
         if (expression.empty() || expression.back() != ';')
-            return error("formula not terminated with ';'");
+            // return error("formula not terminated with ';'");
+            expression += ";";
 
         // Remove the trailing ';' for processing
-        string expr = expression.substr(0, expression.length() - 1);
+        std::string expr = expression.substr(0, expression.length() - 1);
 
-        vector<token> v = get_tokens(expr, separator, ws);
+        std::vector<token> v = get_tokens(expr, separator, ws);
         return evaluate_tokens(v);
     }
 
     void test()
     {
-        std::string expr = "(2 + h * (-6))^2 + (1 + h * (-2))^2 + 2*(2 + h * (-6)) + 4;";
+        std::string expr = "sqrt((x-1)*(x-2)*(x-3)*(x-4)) + (x^5 - 15*x^4 + 85*x^3 - 225*x^2 + 274*x - 120)/(x^3 - 6*x^2 + 11*x - 6) + (x-1)^(3/2)*(x-3)^(1/2) + ((x-2)^3)/(x-3);";
         Symbolic result = evaluateformula(expr);
-        cout << "Result: " << result << endl;
+        std::cout << "Result: " << result << std::endl;
     }
 }

@@ -1,5 +1,4 @@
-#ifndef SENSITIVITY_ANALYSIS_HPP
-#define SENSITIVITY_ANALYSIS_HPP
+#pragma once
 
 #include <vector>
 #include <iostream>
@@ -30,6 +29,13 @@ private:
     std::vector<std::vector<double>> firstTab;
     std::vector<std::vector<double>> revisedTab;
     std::vector<std::string> headerStr;
+
+    std::vector<double> newActivitysCol;
+    std::vector<std::vector<std::vector<double>>> solvedTabs;
+    std::vector<std::vector<std::vector<double>>> newOptTabs;
+
+    std::vector<int> pivotCols;
+    std::vector<int> pivotRows;
 
 public:
     explicit AddingActivitiesAndConstraints(bool isConsoleOutput = false)
@@ -283,22 +289,32 @@ public:
 
     void PrintMatrix(const std::vector<std::vector<double>> &M, const std::string &name = "Matrix")
     {
-        Logger::WriteLine(name);
+        // // Logger::WriteLine(name);
+        // auto transposed = MatTranspose(M);
+        // for (const auto &row : transposed)
+        // {
+        //     for (double val : row)
+        //     {
+        //         // Logger::Write(std::to_string(val) + "    ");
+        //     }
+        //     // Logger::WriteLine("");
+        // }
+        // // Logger::WriteLine("");
+
+        std::cout << name << std::endl;
         auto transposed = MatTranspose(M);
         for (const auto &row : transposed)
         {
             for (double val : row)
             {
-                Logger::Write(std::to_string(val) + "    ");
+                std::cout << val << "    ";
             }
-            Logger::WriteLine("");
+            std::cout << std::endl;
         }
-        Logger::WriteLine("");
+        std::cout << std::endl;
     }
 
-    void DoPreliminaries(const std::vector<double> &objFunc,
-                         const std::vector<std::vector<double>> &constraints,
-                         bool isMin)
+    void DoPreliminaries(const std::vector<double> &objFunc, const std::vector<std::vector<double>> &constraints, bool isMin)
     {
 
         // Make temporary copies
@@ -403,7 +419,7 @@ public:
             PrintMatrix(matrixB, "B");
             PrintMatrix(matrixBNegOne, "B^-1");
             PrintMatrix(matrixCbvNegOne, "cbvB^-1");
-            Logger::WriteLine("");
+            // // Logger::WriteLine("");
         }
 
         // Work with the final tableau directly
@@ -469,46 +485,46 @@ public:
             }
         }
 
-        Logger::WriteLine("");
+        // // Logger::WriteLine("");
         PrintTableau(firstTab, "Initial Table");
-        Logger::WriteLine("");
+        // // Logger::WriteLine("");
 
-        // Logger::WriteLine("Initial Table\n");
+        // // Logger::WriteLine("Initial Table\n");
         // for (const auto &header : headerStr)
         // {
-        //     Logger::Write(header + "               ");
+        //     // Logger::Write(header + "               ");
         // }
-        // Logger::WriteLine("");
+        // // Logger::WriteLine("");
         // for (size_t i = 0; i < firstTab.size(); i++)
         // {
         //     for (size_t j = 0; j < firstTab[i].size(); j++)
         //     {
         //         std::ostringstream oss;
         //         oss << std::fixed << std::setprecision(4) << firstTab[i][j];
-        //         Logger::Write(oss.str() + "           ");
+        //         // Logger::Write(oss.str() + "           ");
         //     }
-        //     Logger::WriteLine("");
+        //     // Logger::WriteLine("");
         // }
-        
-        Logger::WriteLine("");
-        PrintTableau(revisedTab, "Optimal Changing Table");
-        Logger::WriteLine("");
 
-        // Logger::WriteLine("\nOptimal Changing Table\n");
+        // // Logger::WriteLine("");
+        PrintTableau(revisedTab, "Optimal Changing Table");
+        // // Logger::WriteLine("");
+
+        // // Logger::WriteLine("\nOptimal Changing Table\n");
         // for (const auto &header : headerStr)
         // {
-        //     Logger::Write(header + "               ");
+        //     // Logger::Write(header + "               ");
         // }
-        // Logger::WriteLine("");
+        // // Logger::WriteLine("");
         // for (size_t i = 0; i < revisedTab.size(); i++)
         // {
         //     for (size_t j = 0; j < revisedTab[i].size(); j++)
         //     {
         //         std::ostringstream oss;
         //         oss << std::fixed << std::setprecision(4) << revisedTab[i][j];
-        //         Logger::Write(oss.str() + "           ");
+        //         // Logger::Write(oss.str() + "           ");
         //     }
-        //     Logger::WriteLine("");
+        //     // Logger::WriteLine("");
         // }
     }
 
@@ -539,9 +555,54 @@ public:
                 oss << ", ";
             oss << displayCol[i];
         }
-        Logger::WriteLine(oss.str());
+        // Logger::WriteLine(oss.str());
+        std::cout << oss.str() << std::endl;
+
+        auto reOptTab = this->revisedTab;
+
+        for (int i = 0; i < revisedTab.size(); i++)
+        {
+            // reOptTab[i].push_back(displayCol[i]); // Insert the values from displayCol into the new column
+            reOptTab[i].insert(reOptTab[i].begin() + this->objFunc.size(), displayCol[i]);
+        }
+
+        this->solvedTabs.push_back(reOptTab);
+        this->newActivitysCol = displayCol;
+
+        auto [reOptTableaus, _aa, _bb, pivotCols, pivotRows, _ee] = dual->DoDualSimplex({}, {}, NULL, &reOptTab);
+
+        this->pivotCols = pivotCols;
+        this->pivotRows = pivotRows;
+
+        this->newOptTabs = reOptTableaus;
+
+        if (reOptTableaus.size() != 1)
+        {
+            for (size_t i = 0; i < reOptTableaus.size(); i++)
+            {
+                if (i == reOptTableaus.size() - 1)
+                {
+                    PrintTableau(reOptTableaus[i], "Re-Optimal Tableaus optimal");
+                }
+                else
+                {
+                    PrintTableau(reOptTableaus[i], "Re-Optimal Tableaus " + std::to_string(i + 1));
+                }
+            }
+        }
 
         return displayCol;
+    }
+
+    std::vector<double> DoAddActivity(const std::vector<double> &objFuncPassed, const std::vector<std::vector<double>> &constraintsPassed, bool isMinPassed, const std::vector<double> &activity)
+    {
+        objFunc = objFuncPassed;
+        constraints = constraintsPassed;
+        bool isMin = isMinPassed;
+
+        DoPreliminaries(objFunc, constraints, isMin);
+
+        return DoAddActivity(activity);
     }
 
     double RoundValue(double value)
@@ -584,7 +645,8 @@ public:
         tempHeaderStr.push_back("rhs");
 
         // Print title
-        Logger::WriteLine(title);
+        // Logger::WriteLine(title);
+        std::cout << title << std::endl;
 
         // Print headers
         for (const auto &header : tempHeaderStr)
@@ -603,18 +665,17 @@ public:
             std::cout << "\n";
         }
 
-        Logger::WriteLine("");
+        // Logger::WriteLine("");
+        std::cout << std::endl;
     }
 
-
     std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
-    DoAddConstraint(const std::vector<std::vector<double>> &addedConstraints,
-                    const std::vector<std::vector<double>> &overRideTab = {})
+    DoAddConstraint(const std::vector<std::vector<double>> &addedConstraints, const std::vector<std::vector<double>> &overRideTab = {})
     {
-
         if (overRideTab.empty())
         {
-            Logger::WriteLine("needs an input table");
+            // Logger::WriteLine("needs an input table");
+            std::cout << "needs an input table" << std::endl;
             return {{}, {}};
         }
 
@@ -656,6 +717,8 @@ public:
 
         newTab = RoundMatrix(newTab);
         PrintTableau(newTab, "unfixed tab");
+
+        this->solvedTabs.push_back(newTab);
 
         auto displayTab = newTab;
 
@@ -710,7 +773,43 @@ public:
         displayTab = RoundMatrix(displayTab);
         PrintTableau(displayTab, "fixed tab");
 
+        this->solvedTabs.push_back(displayTab);
+
+        auto [reOptTableaus, _aa, _bb, pivotCols, pivotRows, _ee] = dual->DoDualSimplex({}, {}, NULL, &displayTab);
+
+        this->pivotCols = pivotCols;
+        this->pivotRows = pivotRows;
+
+        this->newOptTabs = reOptTableaus;
+
+        // if (reOptTableaus.size() != 1)
+        // {
+        for (size_t i = 0; i < reOptTableaus.size(); i++)
+        {
+            if (i == reOptTableaus.size() - 1)
+            {
+                PrintTableau(reOptTableaus[i], "Re-Optimal Tableaus optimal");
+            }
+            else
+            {
+                PrintTableau(reOptTableaus[i], "Re-Optimal Tableaus " + std::to_string(i + 1));
+            }
+        }
+        // }
+
         return {displayTab, newTab};
+    }
+
+    std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
+    DoAddConstraint(const std::vector<double> &objFuncPassed, const std::vector<std::vector<double>> &constraintsPassed, bool isMinPassed, const std::vector<std::vector<double>> &addedConstraints)
+    {
+        objFunc = objFuncPassed;
+        constraints = constraintsPassed;
+        bool isMin = isMinPassed;
+
+        DoPreliminaries(objFunc, constraints, isMin);
+
+        return DoAddConstraint(addedConstraints, this->revisedTab);
     }
 
     void RunSensitivityAnalysis(const std::vector<double> &objFuncPassed,
@@ -724,7 +823,6 @@ public:
 
         DoPreliminaries(objFunc, constraints, isMin);
 
-
         // std::vector<std::vector<double>> addedCon = {
         //     {1, 0, 0, 2, 1},
         //     {0, 1, 0, 2, 1},
@@ -732,8 +830,8 @@ public:
         // };
         // DoAddConstraint(addedCon, revisedTab);
 
-        std::vector<double> act = {1, 2, 4, 5};
-        DoAddActivity(act);
+        // std::vector<double> act = {1, 2, 4, 5};
+        // DoAddActivity(act);
     }
 
     // Getters for accessing private members if needed
@@ -745,6 +843,11 @@ public:
     const std::vector<std::vector<double>> &getFirstTab() const { return firstTab; }
     const std::vector<std::vector<double>> &getRevisedTab() const { return revisedTab; }
     const std::vector<std::string> &getHeaderStr() const { return headerStr; }
-};
 
-#endif // SENSITIVITY_ANALYSIS_HPP
+    const std::vector<double> &getNewActivitysCol() const { return newActivitysCol; }
+    const std::vector<std::vector<std::vector<double>>> &getSolvedTabs() const { return this->solvedTabs; }
+    const std::vector<std::vector<std::vector<double>>> &getNewOptTabs() const { return this->newOptTabs; }
+
+    const std::vector<int> &getPivotCols() const { return this->pivotCols; }
+    const std::vector<int> &getPivotRows() const { return this->pivotRows; }
+};

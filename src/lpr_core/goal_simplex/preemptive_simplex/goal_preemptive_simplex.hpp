@@ -1,5 +1,4 @@
-#ifndef PENALTIES_SIMPLEX_HPP
-#define PENALTIES_SIMPLEX_HPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -10,11 +9,11 @@
 #include <limits>
 #include <stdexcept>
 
-class GoalPenaltiesSimplex
+class GoalPreemptiveSimplex
 {
 public:
     // Constructor
-    GoalPenaltiesSimplex(bool isConsoleOutput = false)
+    GoalPreemptiveSimplex(bool isConsoleOutput = false)
         : isConsoleOutput(isConsoleOutput)
     {
         testInputSelected = 0;
@@ -28,18 +27,17 @@ public:
 
         // goal constraints
         goalConstraints = {{0.0, 0.0, 0.0, 0.0}};
-        // signItems = {"<=", ">=", "="};
+        signItems = {"<=", ">=", "="};
         signItemsChoices = {0};
 
         // goal constraints
         constraints.clear();
+        signItemsChoicesC = {0};
 
         tableaus.clear();
 
         goals = {"goal 1"};
         goalOrder = {0};
-
-        toggle = false;
 
         pivotCol = -1;
         pivotRow = -1;
@@ -49,11 +47,6 @@ public:
         goalMetStrings.clear();
 
         opTable = -1;
-
-        extraGoalCtr = 0;
-
-        penalties = {0.0};
-        penaltiesTotals.clear();
     }
 
     // Test input function
@@ -61,49 +54,40 @@ public:
     {
         std::vector<std::vector<double>> goals;
         std::vector<std::vector<double>> constraints;
-        std::vector<double> penalties;
         std::vector<int> orderOverride;
-        bool valid;
     };
 
     TestInputResult testInput(int testNum = -1)
     {
-        TestInputResult result;
-        result.valid = false;
+        std::vector<std::vector<double>> goals;
+        std::vector<std::vector<double>> constraints;
+        std::vector<int> orderOverride;
 
         if (testNum == 0)
         {
-            // result.goals = {
-            //     {40, 30, 20, 100, 0},
-            //     {2, 4, 3, 10, 2},
-            //     {5, 8, 4, 30, 1}};
-
-            result.goals = {
-                {40, 30, 20, 100, 2},
+            goals = {
+                {40, 30, 20, 100, 0},
                 {2, 4, 3, 10, 2},
-                {5, 8, 4, 30, 2}};
+                {5, 8, 4, 30, 1},
+            };
 
-            result.constraints = {};
-            result.penalties = {5, 8, 12, 15, 15, 8};
-            // result.orderOverride = {2, 1, 0};
-            // result.orderOverride = {0, 1, 2};
-            result.orderOverride = {};
-            result.valid = true;
+            constraints = {
+                // {7, 2, 3, 69, 1}
+            };
+
+            // orderOverride = {0, 1, 2};
+            orderOverride = {2, 1, 0}; // {3, 2, 1};
+            // orderOverride = {};
         }
-        else if (testNum == 1)
+
+        if (testNum == -1)
         {
-            result.goals = {
-                {12, 9, 15, 125, 1},
-                {5, 3, 4, 40, 2},
-                {5, 7, 8, 55, 0}};
-            result.constraints = {};
-            result.penalties = {5, 2, 4, 3};
-            result.orderOverride = {0, 1, 2};
-            // result.orderOverride = {};
-            result.valid = true;
+            return {{}, {}, {}};
         }
-
-        return result;
+        else
+        {
+            return {goals, constraints, orderOverride};
+        }
     }
 
     // Build first penalties variable tableau
@@ -114,13 +98,11 @@ public:
         int conStart;
     };
 
-    TableauResult buildFirstpenaltiesVarTableau(
+    TableauResult buildFirstPreemptiveTableau(
         const std::vector<std::vector<double>> &goalConstraints,
         const std::vector<std::vector<double>> &constraints,
-        const std::vector<double> &penaltiesVar,
         const std::vector<int> &orderOverride = {})
     {
-
         std::vector<std::vector<double>> oldTab;
         std::vector<std::vector<double>> newTab;
         int conStart = 0;
@@ -176,7 +158,7 @@ public:
             oldTab[i][0] = 1;
         }
 
-        // put in penaltiesVar spots
+        // put in neg 1s in their spots
         int gCtr = amtOfObjVars + 1;
         int ExtraCtr = 0;
         for (int i = 0; i < static_cast<int>(goalConstraints.size()); i++)
@@ -196,21 +178,6 @@ public:
                 ExtraCtr += 1;
             }
             gCtr += 2;
-        }
-
-        // put in penaltiesVar values or leave as -1
-        if (!penaltiesVar.empty())
-        {
-            for (int i = 0; i < static_cast<int>(oldTab.size()); i++)
-            {
-                for (int j = 0; j < static_cast<int>(oldTab[i].size()); j++)
-                {
-                    if (oldTab[i][j] == -1)
-                    {
-                        oldTab[i][j] = -penaltiesVar[i];
-                    }
-                }
-            }
         }
 
         // put in the slacks
@@ -242,7 +209,8 @@ public:
             {
                 oldTab[i + amtOfGoals][j + 1] = goalConstraints[i][j]; // lhs
             }
-            oldTab[i + amtOfGoals][oldTab[0].size() - 1] = goalConstraints[i][goalConstraints[i].size() - 2]; // rhs
+            oldTab[i + amtOfGoals][oldTab[0].size() - 1] =
+                goalConstraints[i][goalConstraints[i].size() - 2]; // rhs
         }
 
         // put in constraints
@@ -314,18 +282,18 @@ public:
 
         auto modifiedGoalConstraints = tempGoals;
 
-        // calculate the new table goal rows
+        // calculate the new table goal rows (NO penalties in preemptive GP)
         for (int i = 0; i < static_cast<int>(modifiedGoalConstraints.size()); i++)
         {
             for (int j = 0; j < static_cast<int>(newTab[i].size()); j++)
             {
                 if (modifiedGoalConstraints[i].back() == 0)
                 {
-                    newTab[i][j] = -1 * (topRows[i][j] - (bottomRows[i][j] * penaltiesVar[i]));
+                    newTab[i][j] = -1 * (topRows[i][j] - bottomRows[i][j]);
                 }
                 else if (modifiedGoalConstraints[i].back() == 1)
                 {
-                    newTab[i][j] = topRows[i][j] + (bottomRows[i][j] * penaltiesVar[i]);
+                    newTab[i][j] = topRows[i][j] + bottomRows[i][j];
                 }
             }
         }
@@ -511,7 +479,7 @@ public:
     }
 
     // Main penalties function
-    struct PenaltiesResult
+    struct PreemptiveResult
     {
         std::vector<std::vector<std::vector<double>>> tableaus;
         std::vector<std::vector<std::string>> goalMetStrings;
@@ -519,38 +487,28 @@ public:
         std::vector<double> penaltiesTotals;
     };
 
-    PenaltiesResult doPenalties(const std::vector<std::vector<double>> &goals,
-                                const std::vector<std::vector<double>> &constraints,
-                                const std::vector<double> &penalties,
-                                const std::vector<int> &orderOverride = {})
+    PreemptiveResult doPreemptive(std::vector<std::vector<double>> goals, std::vector<std::vector<double>> constraints, std::vector<int> orderOverride = {})
     {
-
+        // Deep copy equivalents
         auto a = goals;
         auto b = constraints;
-        auto c = penalties;
         auto originalGoals = goals;
         std::vector<std::vector<std::vector<double>>> tableaus;
 
         auto expandedOrder = orderOverride;
 
         // account for the equalities
-
         std::vector<std::vector<int>> goalToRows(originalGoals.size());
-
         int rowCtr = 0;
 
         for (size_t g = 0; g < originalGoals.size(); g++)
         {
-
             goalToRows[g].push_back(rowCtr);
-
             rowCtr++;
 
             if (originalGoals[g].back() == 2)
             {
-
                 goalToRows[g].push_back(rowCtr);
-
                 rowCtr++;
             }
         }
@@ -559,41 +517,34 @@ public:
 
         if (!orderOverride.empty())
         {
-
             for (size_t pos = 0; pos < orderOverride.size(); pos++)
             {
-
                 int g = orderOverride[pos];
-
                 expandedOrder.push_back(goalToRows[g][0]);
 
                 if (originalGoals[g].back() == 2)
                 {
-
                     expandedOrder.push_back(goalToRows[g][1]);
                 }
             }
         }
         else
         {
-
             for (int g = 0; g < static_cast<int>(originalGoals.size()); g++)
             {
-
                 expandedOrder.push_back(goalToRows[g][0]);
 
                 if (originalGoals[g].back() == 2)
                 {
-
                     expandedOrder.push_back(goalToRows[g][1]);
                 }
             }
         }
 
-        auto tableauResult = buildFirstpenaltiesVarTableau(a, b, c, expandedOrder);
-        tableaus.push_back(tableauResult.oldTab);
-        tableaus.push_back(tableauResult.newTab);
-        int conStartRow = tableauResult.conStart;
+        // Build first preemptive tableau (assuming this method exists)
+        auto [firstTab, FormulatedTab, conStartRow] = buildFirstPreemptiveTableau(a, b, expandedOrder);
+        tableaus.push_back(firstTab);
+        tableaus.push_back(FormulatedTab);
 
         std::vector<std::vector<double>> tempGoalLst;
         for (const auto &goal : goals)
@@ -604,90 +555,88 @@ public:
                 tempGoalLst.push_back(goal);
             }
         }
-        auto modifiedGoals = tempGoalLst;
+        goals = tempGoalLst;
 
         std::vector<double> zRhs;
         int currentZRow = 0;
 
         for (int i = 0; i < conStartRow; i++)
         {
-            zRhs.push_back(tableaus.back()[i][tableaus.back()[i].size() - 1]);
+            zRhs.push_back(tableaus.back()[i].back());
         }
 
         int lenObj = goals.back().size() - 2;
 
-        // sign list to compare to and initial met goal state
-        std::vector<bool> metGoals(modifiedGoals.size(), false);
+        // Sign list to compare to and initial met goal state
+        std::vector<bool> metGoals;
         std::vector<int> signLst;
-        for (int i = 0; i < static_cast<int>(modifiedGoals.size()); i++)
+        for (int i = 0; i < goals.size(); i++)
         {
             signLst.push_back(-1);
             signLst.push_back(1);
+            metGoals.push_back(false);
         }
 
         metGoals[0] = true;
 
         int highestTrueIndex = -1;
         int currentTrueIndex = -1;
-
         bool isLoopRunning = true;
-
         std::vector<std::vector<std::string>> goalMetStrings;
-        std::vector<double> penaltiesTotals;
 
         int ctr = 0;
         while (ctr != 100 && isLoopRunning)
         {
             std::vector<std::vector<double> *> basicVarLst;
 
-            for (int k = lenObj + 1; k < static_cast<int>(tableaus.back()[0].size()) - 1 - static_cast<int>(constraints.size()); k++)
+            for (int k = lenObj + 1; k < (tableaus.back().back().size() - 1) - constraints.size(); k++)
             {
                 int columnIndex = k;
-                std::vector<double> tempLst;
+                std::vector<double> *tempLst = new std::vector<double>();
 
-                for (int i = conStartRow; i < static_cast<int>(tableaus.back().size()); i++)
+                for (int i = conStartRow; i < tableaus.back().size(); i++)
                 {
-                    tempLst.push_back(tableaus.back()[i][columnIndex]);
+                    double columnValue = tableaus.back()[i][columnIndex];
+                    tempLst->push_back(columnValue);
                 }
 
                 double sum = 0;
-                for (double val : tempLst)
+                for (double val : *tempLst)
                 {
                     sum += val;
                 }
 
                 if (sum == 1)
                 {
-                    basicVarLst.push_back(new std::vector<double>(tempLst));
+                    basicVarLst.push_back(tempLst);
                 }
                 else
                 {
                     basicVarLst.push_back(nullptr);
+                    delete tempLst;
                 }
             }
 
-            std::vector<double *> goalRhs(modifiedGoals.size(), nullptr);
+            std::vector<double *> goalRhs(goals.size(), nullptr);
 
-            // get the rhs from basic cols
-            for (int i = 0; i < static_cast<int>(basicVarLst.size()); i++)
+            // Get the rhs from basic cols
+            for (int i = 0; i < basicVarLst.size(); i++)
             {
                 if (basicVarLst[i] != nullptr)
                 {
                     int sign = signLst[i];
-                    for (int j = 0; j < static_cast<int>(basicVarLst[i]->size()); j++)
+                    for (int j = 0; j < basicVarLst[i]->size(); j++)
                     {
                         if ((*basicVarLst[i])[j] == 1.0)
                         {
-                            double *value = new double;
                             if (sign == 1)
                             {
-                                *value = tableaus.back()[j + conStartRow][tableaus.back()[j + conStartRow].size() - 1];
+                                goalRhs[j] = new double(tableaus.back()[j + conStartRow].back());
                             }
                             else if (sign == -1)
                             {
-                                *value = -tableaus.back()[j + conStartRow][tableaus.back()[j + conStartRow].size() - 1];
+                                goalRhs[j] = new double(-tableaus.back()[j + conStartRow].back());
                             }
-                            goalRhs[j] = value;
                         }
                     }
                 }
@@ -695,10 +644,10 @@ public:
 
             std::vector<std::vector<double> *> sortedLst;
 
-            // sort according to where goals are
-            for (int k = 0; k < static_cast<int>(basicVarLst.size()); k += 2)
+            // Sort according to where goals are
+            for (int k = 0; k < basicVarLst.size(); k += 2)
             {
-                if (k + 1 < static_cast<int>(basicVarLst.size()))
+                if (k + 1 < basicVarLst.size())
                 {
                     if (basicVarLst[k] == nullptr && basicVarLst[k + 1] == nullptr)
                     {
@@ -720,11 +669,11 @@ public:
 
             std::vector<double *> tempLst(goalRhs.size(), nullptr);
 
-            for (int i = 0; i < static_cast<int>(sortedLst.size()); i++)
+            for (int i = 0; i < sortedLst.size(); i++)
             {
                 if (sortedLst[i] != nullptr)
                 {
-                    for (int j = 0; j < static_cast<int>(sortedLst[i]->size()); j++)
+                    for (int j = 0; j < sortedLst[i]->size(); j++)
                     {
                         if ((*sortedLst[i])[j] == 1)
                         {
@@ -736,7 +685,7 @@ public:
 
             goalRhs = tempLst;
 
-            for (int i = 0; i < static_cast<int>(goalRhs.size()); i++)
+            for (int i = 0; i < goalRhs.size(); i++)
             {
                 if (goalRhs[i] != nullptr && *goalRhs[i] == -0.0)
                 {
@@ -745,9 +694,7 @@ public:
             }
 
             std::vector<int> EqualitySigns;
-
-            // handle the equalities
-            for (int i = 0; i < static_cast<int>(originalGoals.size()); i++)
+            for (int i = 0; i < originalGoals.size(); i++)
             {
                 if (originalGoals[i].back() == 2)
                 {
@@ -763,44 +710,36 @@ public:
                             EqualitySigns.push_back(-i);
                             EqualitySigns.push_back(i + 1);
                         }
-
-                        double *newVal = new double(std::abs(*goalRhs[i]));
-                        goalRhs.insert(goalRhs.begin() + i, newVal);
-                        if (goalRhs[i + 1] != nullptr)
-                        {
-                            *goalRhs[i + 1] = -std::abs(*goalRhs[i + 1]);
-                        }
+                        goalRhs.insert(goalRhs.begin() + i, new double(std::abs(*goalRhs[i])));
+                        *goalRhs[i + 1] = -std::abs(*goalRhs[i + 1]);
                     }
                     else
                     {
                         goalRhs.insert(goalRhs.begin() + i, goalRhs[i]);
                     }
-                    if (!goalRhs.empty())
-                    {
-                        goalRhs.pop_back();
-                    }
+                    goalRhs.pop_back();
                 }
             }
 
             std::vector<std::string> goalMetString;
 
-            // check if goal is met based on constraints conditions
-            for (int i = 0; i < static_cast<int>(goalRhs.size()); i++)
+            // Check if goal is met based on constraints conditions
+            for (int i = 0; i < goalRhs.size(); i++)
             {
                 if (goalRhs[i] == nullptr)
                 {
                     metGoals[i] = true;
-                    if (modifiedGoals[i].back() != 2)
+                    if (goals[i].back() != 2)
                     {
                         goalMetString.push_back(std::to_string(i + 1) + " met: exactly");
                     }
                     continue;
                 }
 
-                // check if goal is met based on constraints conditions
-                if (modifiedGoals[i].back() == 0)
+                // Check if goal is met based on constraints conditions
+                if (goals[i].back() == 0)
                 {
-                    if ((*goalRhs[i] + modifiedGoals[i][modifiedGoals[i].size() - 2]) <= modifiedGoals[i][modifiedGoals[i].size() - 2])
+                    if ((*goalRhs[i] + goals[i][goals[i].size() - 2]) <= goals[i][goals[i].size() - 2])
                     {
                         if (*goalRhs[i] > 0)
                         {
@@ -825,9 +764,9 @@ public:
                         metGoals[i] = false;
                     }
                 }
-                else if (modifiedGoals[i].back() == 1)
+                else if (goals[i].back() == 1)
                 {
-                    if ((*goalRhs[i] + modifiedGoals[i][modifiedGoals[i].size() - 2]) >= modifiedGoals[i][modifiedGoals[i].size() - 2])
+                    if ((*goalRhs[i] + goals[i][goals[i].size() - 2]) >= goals[i][goals[i].size() - 2])
                     {
                         if (*goalRhs[i] > 0)
                         {
@@ -852,9 +791,9 @@ public:
                         metGoals[i] = false;
                     }
                 }
-                else if (modifiedGoals[i].back() == 2)
+                else if (goals[i].back() == 2)
                 {
-                    if (*goalRhs[i] == modifiedGoals[i][modifiedGoals[i].size() - 2])
+                    if (*goalRhs[i] == goals[i][goals[i].size() - 2])
                     {
                         metGoals[i] = true;
                     }
@@ -869,7 +808,7 @@ public:
             if (!expandedOrder.empty())
             {
                 std::vector<double> tempZRhs;
-                for (int i = 0; i < static_cast<int>(zRhs.size()); i++)
+                for (int i = 0; i < zRhs.size(); i++)
                 {
                     tempZRhs.push_back(zRhs[expandedOrder[i]]);
                 }
@@ -877,7 +816,7 @@ public:
             }
 
             // 0 in top rhs means goal met regardless of bottom rhs
-            for (int i = 0; i < static_cast<int>(zRhs.size()); i++)
+            for (int i = 0; i < zRhs.size(); i++)
             {
                 if (zRhs[i] == 0.0)
                 {
@@ -890,17 +829,17 @@ public:
             if (!expandedOrder.empty())
             {
                 std::vector<bool> tempMet;
-                for (int i = 0; i < static_cast<int>(metGoals.size()); i++)
+                for (int i = 0; i < metGoals.size(); i++)
                 {
                     tempMet.push_back(metGoals[expandedOrder[i]]);
                 }
                 metGoals = tempMet;
             }
 
-            // for the equality if z- is the basic var then z+ is false vice versa
+            // For the equality if z- is the basic var then z+ is false vice versa
             if (!EqualitySigns.empty())
             {
-                for (int i = 0; i < static_cast<int>(EqualitySigns.size()); i++)
+                for (int i = 0; i < EqualitySigns.size(); i++)
                 {
                     if (EqualitySigns[i] < 0)
                     {
@@ -913,22 +852,10 @@ public:
                 }
             }
 
-            // penalties specific used to get the total penalties for each tableau
-            double tempPenaltiesTotal = 0;
-            for (int i = 0; i < static_cast<int>(metGoals.size()); i++)
+            // Swap to the row of the current goal being worked on
+            for (int i = 0; i < metGoals.size(); i++)
             {
-                if (!metGoals[i])
-                {
-                    tempPenaltiesTotal += std::abs(zRhs[i]);
-                }
-            }
-
-            penaltiesTotals.push_back(tempPenaltiesTotal);
-
-            // swap to the row of the current goal being worked on
-            for (int i = 0; i < static_cast<int>(metGoals.size()); i++)
-            {
-                if (!metGoals[i])
+                if (metGoals[i] == false)
                 {
                     currentZRow = i;
                     break;
@@ -936,7 +863,7 @@ public:
             }
 
             auto tempMetGoals = metGoals;
-            for (int i = 0; i < static_cast<int>(originalGoals.size()); i++)
+            for (int i = 0; i < originalGoals.size(); i++)
             {
                 if (originalGoals[i].back() == 2)
                 {
@@ -984,7 +911,7 @@ public:
 
             goalMetStrings.push_back(goalMetString);
 
-            for (int i = 0; i < static_cast<int>(metGoals.size()); i++)
+            for (int i = 0; i < metGoals.size(); i++)
             {
                 if (!metGoals[i])
                 {
@@ -1008,6 +935,7 @@ public:
             if (std::all_of(metGoals.begin(), metGoals.end(), [](bool v)
                             { return v; }))
             {
+                tableaus.push_back(tableaus.back());
                 isLoopRunning = false;
             }
 
@@ -1015,23 +943,22 @@ public:
 
             try
             {
-                auto pivotResult = doPivotOperations(tableaus.back(), conStartRow, currentZRow, 1);
-                tableaus.push_back(pivotResult.newTab);
-                zRhs = pivotResult.zRhs;
+                auto [newTab, newZRhs] = doPivotOperations(tableaus.back(), conStartRow, currentZRow, 1);
+                tableaus.push_back(newTab);
+                zRhs = newZRhs;
             }
             catch (const std::exception &e)
             {
                 goalMetStrings.push_back({"0"});
-                penaltiesTotals.push_back(std::numeric_limits<double>::infinity());
                 break;
             }
 
             // Clean up dynamically allocated memory
-            for (auto *ptr : basicVarLst)
+            for (auto ptr : basicVarLst)
             {
                 delete ptr;
             }
-            for (auto *ptr : goalRhs)
+            for (auto ptr : goalRhs)
             {
                 delete ptr;
             }
@@ -1040,60 +967,66 @@ public:
         }
 
         // Sort goal met strings
-        for (auto &sublist : goalMetStrings)
+        std::vector<std::vector<std::string>> sortedGoalMetStrings;
+        for (const auto &sublist : goalMetStrings)
         {
-            std::sort(sublist.begin(), sublist.end(), [](const std::string &a, const std::string &b)
+            auto sorted = sublist;
+            std::sort(sorted.begin(), sorted.end(), [](const std::string &a, const std::string &b)
                       {
                 int numA = std::stoi(a.substr(0, a.find(' ')));
                 int numB = std::stoi(b.substr(0, b.find(' ')));
                 return numA < numB; });
+            sortedGoalMetStrings.push_back(sorted);
         }
 
-        for (auto &sublist : goalMetStrings)
+        for (int i = 0; i < sortedGoalMetStrings.size(); i++)
         {
-            for (auto &item : sublist)
+            for (int j = 0; j < sortedGoalMetStrings[i].size(); j++)
             {
-                size_t firstSpace = item.find(' ');
-                if (firstSpace != std::string::npos)
+                std::istringstream iss(sortedGoalMetStrings[i][j]);
+                std::string word;
+                std::vector<std::string> words;
+                while (iss >> word)
                 {
-                    item = item.substr(firstSpace + 1);
+                    words.push_back(word);
+                }
+                if (words.size() > 1)
+                {
+                    std::string result;
+                    for (int k = 1; k < words.size(); k++)
+                    {
+                        if (k > 1)
+                            result += " ";
+                        result += words[k];
+                    }
+                    sortedGoalMetStrings[i][j] = result;
                 }
             }
         }
 
-        penaltiesTotals.insert(penaltiesTotals.begin(), std::numeric_limits<double>::infinity());
+        goalMetStrings = sortedGoalMetStrings;
         goalMetStrings.insert(goalMetStrings.begin(), {" "});
 
         if (isConsoleOutput)
         {
-            std::cout << "Penalties totals: ";
-            for (double penalty : penaltiesTotals)
-            {
-                std::cout << penalty << " ";
-            }
-            std::cout << std::endl;
-        }
-
-        if (isConsoleOutput)
-        {
-            for (int i = 0; i < static_cast<int>(tableaus.size()); i++)
+            for (int i = 0; i < tableaus.size(); i++)
             {
                 try
                 {
-                    std::cout << "Penalty: " << penaltiesTotals[i] << std::endl;
-                    for (int l = 0; l < static_cast<int>(goalMetStrings[i].size()); l++)
+                    for (int l = 0; l < goalMetStrings[i].size(); l++)
                     {
-                        std::cout << "Goal " << l + 1 << " " << goalMetStrings[i][l] << std::endl;
+                        std::cout << "Goal " << (l + 1) << " " << goalMetStrings[i][l] << std::endl;
                     }
                 }
                 catch (const std::exception &e)
                 {
-                    // Handle exception silently
+                    // Handle exception silently like Python pass
                 }
-                std::cout << "Tableau " << i + 1 << std::endl;
-                for (int j = 0; j < static_cast<int>(tableaus[i].size()); j++)
+
+                std::cout << "Tableau " << (i + 1) << std::endl;
+                for (int j = 0; j < tableaus[i].size(); j++)
                 {
-                    for (int k = 0; k < static_cast<int>(tableaus[i][j].size()); k++)
+                    for (int k = 0; k < tableaus[i][j].size(); k++)
                     {
                         std::cout << std::setw(10) << std::fixed << std::setprecision(3)
                                   << tableaus[i][j][k] << " ";
@@ -1103,24 +1036,23 @@ public:
                 std::cout << std::endl;
             }
 
-            std::cout << "\nOptimal Tableau:\n"
+            std::cout << "\noptimal Tableau:\n"
                       << std::endl;
         }
 
-        int opTable = std::distance(penaltiesTotals.begin(),
-                                    std::min_element(penaltiesTotals.begin(), penaltiesTotals.end()));
+        int opTable = std::distance(tableaus.begin(),
+                                    std::find(tableaus.begin(), tableaus.end(), tableaus[tableaus.size() - 2]));
 
         if (isConsoleOutput)
         {
-            std::cout << "Penalty: " << penaltiesTotals[opTable] << std::endl;
-            for (int l = 0; l < static_cast<int>(goalMetStrings[opTable].size()); l++)
+            for (int l = 0; l < goalMetStrings[opTable].size(); l++)
             {
-                std::cout << "Goal " << l + 1 << " " << goalMetStrings[opTable][l] << std::endl;
+                std::cout << "Goal " << (l + 1) << " " << goalMetStrings[opTable][l] << std::endl;
             }
-            std::cout << "Tableau " << opTable + 1 << std::endl;
-            for (int j = 0; j < static_cast<int>(tableaus[opTable].size()); j++)
+            std::cout << "Tableau " << (opTable + 1) << std::endl;
+            for (int j = 0; j < tableaus[opTable].size(); j++)
             {
-                for (int k = 0; k < static_cast<int>(tableaus[opTable][j].size()); k++)
+                for (int k = 0; k < tableaus[opTable][j].size(); k++)
                 {
                     std::cout << std::setw(10) << std::fixed << std::setprecision(3)
                               << tableaus[opTable][j][k] << " ";
@@ -1130,21 +1062,38 @@ public:
             std::cout << std::endl;
         }
 
-        PenaltiesResult result;
-        result.tableaus = tableaus;
-        result.goalMetStrings = goalMetStrings;
-        result.opTable = opTable;
-        result.penaltiesTotals = penaltiesTotals;
+        this->tableaus = tableaus;
+        this->goalMetStrings = goalMetStrings;
+        this->opTable = opTable;
 
-        return result;
+        return {tableaus, goalMetStrings, opTable};
     }
+
+    // Getters for accessing private members
+    // const std::vector<std::string> &getGuiHeaderRow() const { return GuiHeaderRow; }
+    // const std::vector<int> &getGuiPivotCols() const { return GuiPivotCols; }
+    // const std::vector<int> &getGuiPivotRows() const { return GuiPivotRows; }
+    // int getOpTable() const { return opTable; }
+    // const std::vector<double> &getPenaltiesTotals() const { return penaltiesTotals; }
 
     // Getters for accessing private members
     const std::vector<std::string> &getGuiHeaderRow() const { return GuiHeaderRow; }
     const std::vector<int> &getGuiPivotCols() const { return GuiPivotCols; }
     const std::vector<int> &getGuiPivotRows() const { return GuiPivotRows; }
-    int getOpTable() const { return opTable; }
-    const std::vector<double> &getPenaltiesTotals() const { return penaltiesTotals; }
+
+    // important getters
+    const std::vector<std::vector<std::vector<double>>> &getTableaus() const
+    {
+        return tableaus;
+    }
+    const std::vector<std::vector<std::string>> &getGoalMetStrings() const
+    {
+        return goalMetStrings;
+    }
+    int getOpTable() const
+    {
+        return opTable;
+    }
 
 private:
     bool isConsoleOutput;
@@ -1172,8 +1121,6 @@ private:
     std::vector<std::string> goals;
     std::vector<int> goalOrder;
 
-    bool toggle;
-
     int pivotCol;
     int pivotRow;
     int tCol;
@@ -1182,11 +1129,4 @@ private:
     std::vector<std::vector<std::string>> goalMetStrings;
 
     int opTable;
-
-    int extraGoalCtr;
-
-    std::vector<double> penalties;
-    std::vector<double> penaltiesTotals;
 };
-
-#endif // PENALTIES_SIMPLEX_HPP

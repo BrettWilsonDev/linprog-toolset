@@ -1,5 +1,4 @@
-#ifndef TWO_PHASE_SIMPLEX_HPP
-#define TWO_PHASE_SIMPLEX_HPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -42,6 +41,21 @@ private:
 
     std::vector<int> phases;
     double prevZ;
+
+    std::string wString;
+
+    struct LPRResult
+    {
+        std::vector<std::vector<std::vector<double>>> tableaus;
+        std::vector<int> pivotCols;
+        std::vector<int> pivotRows;
+        std::vector<std::string> headerRow;
+        std::vector<int> phases;
+        double optimalSolution;
+        std::vector<double> changingVars;
+    };
+
+    LPRResult result;
 
 public:
     TwoPhaseSimplex(bool consoleOutput = false, bool blandsRule = false)
@@ -253,6 +267,19 @@ public:
             std::cout << "w" << wStr << " = " << summedW.back() << std::endl
                       << std::endl;
         }
+
+        std::string wStr = "";
+        for (int i = 0; i < summedW.size() - 1; i++)
+        {
+            wStr += " + " + std::to_string(summedW[i]) + "x" + std::to_string(i + 1);
+        }
+
+        for (int i = 0; i < eCons.size(); i++)
+        {
+            wStr += " - e" + std::to_string(i + 1);
+        }
+
+        wString = "w" + wStr + " = " + std::to_string(summedW.back());
 
         // Fill the table with zeros
         tab.resize(tableH);
@@ -491,13 +518,7 @@ public:
 #include <cmath>
 #include <iostream>
 
-    // Assuming these are member variables of your class
-    // std::vector<int> IMPivotCols;
-    // std::vector<int> IMPivotRows;
-    // bool isConsoleOutput;
-
-    std::pair<std::vector<std::vector<double>>, bool> DoPivotOperationsPhase2(
-        const std::vector<std::vector<double>> &tab, bool isMin)
+    std::pair<std::vector<std::vector<double>>, bool> DoPivotOperationsPhase2(const std::vector<std::vector<double>> &tab, bool isMin)
     {
 
         double largestZ;
@@ -689,44 +710,40 @@ public:
         return std::make_pair(newTab, isAllNegZ);
     }
 
-    std::vector<std::vector<std::vector<double>>> DoTwoPhase(const std::vector<double> &objFunc,
-                                                             const std::vector<std::vector<double>> &constraints,
-                                                             bool isMin)
+    std::vector<std::vector<std::vector<double>>> DoTwoPhase(const std::vector<double> &objFunc, const std::vector<std::vector<double>> &constraints, bool isMin)
     {
         std::vector<std::vector<std::vector<double>>> tabs;
+        bool isAllNegW = false;
+        std::vector<int> aCols;
 
-        FormulationResult formResult = formulateFirstTab1(objFunc, constraints);
-        std::vector<std::vector<double>> tab = formResult.tableau;
-        std::vector<int> aCols = formResult.aCols;
-
+        // Formulate first tableau
+        auto [tab, cols] = formulateFirstTab1(objFunc, constraints);
+        aCols = cols;
         tabs.push_back(tab);
 
-        bool isAllNegW = true;
-        for (double num : tabs.back()[0])
-        {
-            if (num > 0)
-            {
-                isAllNegW = false;
-                break;
-            }
-        }
+        // Check if all elements in first row are non-positive
+        isAllNegW = tabs.back()[0].empty() ? false : std::all_of(tabs.back()[0].begin(), tabs.back()[0].end(), [](double num)
+                                                                 { return num <= 0; });
 
         int phase1Ctr = 0;
         while (!isAllNegW)
         {
-            PivotResult pivotResult = DoPivotOperationsPhase1(tabs.back());
-            if (!pivotResult.valid)
+            auto [newTab, newIsAllNegW, pivotValid] = DoPivotOperationsPhase1(tabs.back());
+            if (!pivotValid)
+            {
+                break;
+            }
+            if (!newTab.size() && newIsAllNegW == false)
             {
                 break;
             }
 
-            tab = pivotResult.tableau;
-            isAllNegW = pivotResult.isOptimal;
-
-            tabs.push_back(tab);
+            tabs.push_back(newTab);
+            isAllNegW = newIsAllNegW;
 
             phase1Ctr++;
             IMPhaseType.push_back(0);
+
             if (isAllNegW || phase1Ctr > 10)
             {
                 break;
@@ -735,51 +752,31 @@ public:
 
         int tabPhaseNum = phase1Ctr + 1;
 
+        // Deep copy last tableau
         std::vector<std::vector<double>> newTab = tabs.back();
 
-        // Remove artificial variable columns
+        // Zero out columns specified in aCols
         for (int k = 0; k < aCols.size(); k++)
         {
-            for (int i = 0; i < newTab.size(); i++)
+            for (size_t i = 0; i < newTab.size(); i++)
             {
-                if (aCols[k] < newTab[i].size())
-                {
-                    newTab[i][aCols[k]] = 0.0;
-                }
+                newTab[i][aCols[k]] = 0.0;
             }
         }
 
         tabs.push_back(newTab);
 
-        bool AllPosZ;
-        if (!isMin)
-        {
-            AllPosZ = true;
-            for (int i = 0; i < tabs.back()[1].size() - 1; i++)
-            {
-                if (tabs.back()[1][i] < 0)
-                {
-                    AllPosZ = false;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            AllPosZ = true;
-            for (int i = 0; i < tabs.back()[1].size() - 1; i++)
-            {
-                if (tabs.back()[1][i] > 0)
-                {
-                    AllPosZ = false;
-                    break;
-                }
-            }
-        }
+        // Check objective row (second row, excluding last element)
+        bool AllPosZ = isMin ? std::all_of(tabs.back()[1].begin(), tabs.back()[1].end() - 1,
+                                           [](double num)
+                                           { return num <= 0; })
+                             : std::all_of(tabs.back()[1].begin(), tabs.back()[1].end() - 1,
+                                           [](double num)
+                                           { return num >= 0; });
 
-        // Find and remove duplicate
+        // Find index of duplicate tableau
         int indexOfDupe = -1;
-        for (int i = 0; i < tabs.size() - 1; i++)
+        for (size_t i = 0; i < tabs.size(); i++)
         {
             if (tabs[i] == tabs.back())
             {
@@ -794,12 +791,15 @@ public:
         while (!AllPosZ)
         {
             prevZ = tabs.back()[1].back();
-            auto pivotResult = DoPivotOperationsPhase2(tabs.back(), isMin);
+            auto [newTab, newAllPosZ] = DoPivotOperationsPhase2(tabs.back(), isMin);
 
-            tab = pivotResult.first;
-            AllPosZ = pivotResult.second;
+            if (!newTab.size() && newAllPosZ == false)
+            {
+                break;
+            }
 
-            tabs.push_back(tab);
+            tabs.push_back(newTab);
+            AllPosZ = newAllPosZ;
             phases.push_back(1);
 
             if (AllPosZ || phase2Ctr > 100)
@@ -811,21 +811,15 @@ public:
             IMPhaseType.push_back(2);
         }
 
+        // Remove duplicate tableau
         if (indexOfDupe != -1 && indexOfDupe < tabs.size())
         {
             tabs.erase(tabs.begin() + indexOfDupe);
         }
 
         // Final optimal check
-        isAllNegW = true;
-        for (double num : tabs.back()[0])
-        {
-            if (num > 0)
-            {
-                isAllNegW = false;
-                break;
-            }
-        }
+        isAllNegW = tabs.back()[0].empty() ? false : std::all_of(tabs.back()[0].begin(), tabs.back()[0].end(), [](double num)
+                                                                 { return num <= 0; });
 
         if (!isAllNegW)
         {
@@ -839,7 +833,8 @@ public:
         IMPhaseType.push_back(2);
         int currentPhase = 1;
 
-        for (int i = 0; i < tabs.size(); i++)
+        // Output tableaus
+        for (size_t i = 0; i < tabs.size(); i++)
         {
             if (i == tabPhaseNum)
             {
@@ -850,12 +845,11 @@ public:
             {
                 std::cout << "Phase " << currentPhase << std::endl;
                 std::cout << "Tableau " << (i + 1) << std::endl;
-                for (int j = 0; j < tabs[i].size(); j++)
+                for (const auto &row : tabs[i])
                 {
-                    for (int k = 0; k < tabs[i][j].size(); k++)
+                    for (double val : row)
                     {
-                        std::cout << std::setw(10) << std::fixed << std::setprecision(3)
-                                  << tabs[i][j][k] << " ";
+                        std::cout << std::fixed << std::setprecision(3) << std::setw(10) << val << " ";
                     }
                     std::cout << std::endl;
                 }
@@ -864,8 +858,233 @@ public:
         }
 
         phases.push_back(-1);
+
+        size_t nVars = objFunc.size(); // number of decision variables
+        std::vector<double> changingVars(nVars, 0.0);
+
+        // Reference the last tableau
+        const auto &lastTable = tabs.back();
+
+        for (size_t col = 0; col < nVars; ++col)
+        {
+            int onesCount = 0;
+            int nonZeroCount = 0;
+            size_t rowIndex = 0;
+
+            for (size_t row = 0; row < lastTable.size(); ++row)
+            {
+                if (lastTable[row][col] == 1.0)
+                {
+                    ++onesCount;
+                    rowIndex = row;
+                }
+                if (lastTable[row][col] != 0.0)
+                {
+                    ++nonZeroCount;
+                }
+            }
+
+            // Valid if exactly one 1 and all others are zero
+            if (onesCount == 1 && nonZeroCount == 1)
+            {
+                changingVars[col] = lastTable[rowIndex].back(); // RHS
+            }
+        }
+
+        result.tableaus = tabs;
+        result.pivotCols = IMPivotCols;
+        result.pivotRows = IMPivotRows;
+        result.headerRow = IMHeaderRow;
+        result.phases = phases;
+        result.optimalSolution = tabs.back().at(1).back();
+        result.changingVars = changingVars;
+
         return tabs;
     }
+
+    // std::vector<std::vector<std::vector<double>>> DoTwoPhase(const std::vector<double> &objFunc, const std::vector<std::vector<double>> &constraints, bool isMin)
+    // {
+    //     std::vector<std::vector<std::vector<double>>> tabs;
+
+    //     FormulationResult formResult = formulateFirstTab1(objFunc, constraints);
+    //     std::vector<std::vector<double>> tab = formResult.tableau;
+    //     std::vector<int> aCols = formResult.aCols;
+
+    //     tabs.push_back(tab);
+
+    //     bool isAllNegW = true;
+    //     for (double num : tabs.back()[0])
+    //     {
+    //         if (num > 0)
+    //         {
+    //             isAllNegW = false;
+    //             break;
+    //         }
+    //     }
+
+    //     int phase1Ctr = 0;
+    //     while (!isAllNegW)
+    //     {
+    //         PivotResult pivotResult = DoPivotOperationsPhase1(tabs.back());
+    //         if (!pivotResult.valid)
+    //         {
+    //             break;
+    //         }
+
+    //         tab = pivotResult.tableau;
+    //         isAllNegW = pivotResult.isOptimal;
+
+    //         tabs.push_back(tab);
+
+    //         phase1Ctr++;
+    //         IMPhaseType.push_back(0);
+    //         if (isAllNegW || phase1Ctr > 10)
+    //         {
+    //             break;
+    //         }
+    //     }
+
+    //     int tabPhaseNum = phase1Ctr + 1;
+
+    //     std::vector<std::vector<double>> newTab = tabs.back();
+
+    //     // Remove artificial variable columns
+    //     for (int k = 0; k < aCols.size(); k++)
+    //     {
+    //         for (int i = 0; i < newTab.size(); i++)
+    //         {
+    //             if (aCols[k] < newTab[i].size())
+    //             {
+    //                 newTab[i][aCols[k]] = 0.0;
+    //             }
+    //         }
+    //     }
+
+    //     tabs.push_back(newTab);
+
+    //     bool AllPosZ;
+    //     if (!isMin)
+    //     {
+    //         AllPosZ = true;
+    //         for (int i = 0; i < tabs.back()[1].size() - 1; i++)
+    //         {
+    //             if (tabs.back()[1][i] < 0)
+    //             {
+    //                 AllPosZ = false;
+    //                 break;
+    //             }
+    //         }
+    //     }
+    //     else
+    //     {
+    //         AllPosZ = true;
+    //         for (int i = 0; i < tabs.back()[1].size() - 1; i++)
+    //         {
+    //             if (tabs.back()[1][i] > 0)
+    //             {
+    //                 AllPosZ = false;
+    //                 break;
+    //             }
+    //         }
+    //     }
+
+    //     // Find and remove duplicate
+    //     // int indexOfDupe = -1;
+    //     // for (int i = 0; i < tabs.size() - 1; i++)
+    //     // {
+    //     //     if (tabs[i] == tabs.back())
+    //     //     {
+    //     //         indexOfDupe = i;
+    //     //         break;
+    //     //     }
+    //     // }
+
+    //     int phase2Ctr = 0;
+    //     phases.push_back(0);
+
+    //     while (!AllPosZ)
+    //     {
+    //         prevZ = tabs.back()[1].back();
+    //         auto pivotResult = DoPivotOperationsPhase2(tabs.back(), isMin);
+
+    //         tab = pivotResult.first;
+    //         AllPosZ = pivotResult.second;
+
+    //         tabs.push_back(tab);
+    //         phases.push_back(1);
+
+    //         if (AllPosZ || phase2Ctr > 100)
+    //         {
+    //             break;
+    //         }
+
+    //         phase2Ctr++;
+    //         IMPhaseType.push_back(2);
+    //     }
+
+    //     if (indexOfDupe != -1 && indexOfDupe < tabs.size())
+    //     {
+    //         tabs.erase(tabs.begin() + indexOfDupe);
+    //     }
+
+    //     // Final optimal check
+    //     isAllNegW = true;
+    //     for (double num : tabs.back()[0])
+    //     {
+    //         if (num > 0)
+    //         {
+    //             isAllNegW = false;
+    //             break;
+    //         }
+    //     }
+
+    //     if (!isAllNegW)
+    //     {
+    //         tabs.pop_back();
+    //         if (!IMPivotCols.empty())
+    //             IMPivotCols.pop_back();
+    //         if (!IMPivotRows.empty())
+    //             IMPivotRows.pop_back();
+    //     }
+
+    //     IMPhaseType.push_back(2);
+    //     int currentPhase = 1;
+
+    //     for (int i = 0; i < tabs.size(); i++)
+    //     {
+    //         if (i == tabPhaseNum)
+    //         {
+    //             currentPhase = 2;
+    //         }
+
+    //         if (isConsoleOutput)
+    //         {
+    //             std::cout << "Phase " << currentPhase << std::endl;
+    //             std::cout << "Tableau " << (i + 1) << std::endl;
+    //             for (int j = 0; j < tabs[i].size(); j++)
+    //             {
+    //                 for (int k = 0; k < tabs[i][j].size(); k++)
+    //                 {
+    //                     std::cout << std::setw(10) << std::fixed << std::setprecision(3)
+    //                               << tabs[i][j][k] << " ";
+    //                 }
+    //                 std::cout << std::endl;
+    //             }
+    //             std::cout << std::endl;
+    //         }
+    //     }
+
+    //     phases.push_back(-1);
+
+    //     result.tableaus = tabs;
+    //     result.pivotCols = IMPivotCols;
+    //     result.pivotRows = IMPivotRows;
+    //     result.headerRow = IMHeaderRow;
+    //     result.phases = phases;
+    //     result.optimalSolution = tabs.back().at(1).back();
+
+    //     return tabs;
+    // }
 
     // Setter to enable/disable Bland's rule
     void SetBlandsRule(bool enable) { useBlandsRule = enable; }
@@ -876,6 +1095,10 @@ public:
     const std::vector<std::string> &GetHeaderRow() const { return IMHeaderRow; }
     const std::vector<int> &GetPhaseTypes() const { return IMPhaseType; }
     const std::vector<int> &GetPhases() const { return phases; }
-};
+    const std::string &GetWString() const { return wString; }
 
-#endif // TWO_PHASE_SIMPLEX_HPP
+    LPRResult GetResult()
+    {
+        return result;
+    }
+};

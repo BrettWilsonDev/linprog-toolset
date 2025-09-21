@@ -1,30 +1,28 @@
+#ifdef EMSCRIPTEN
+#include "web/web_bindings.hpp"
+#endif
+
+// #include "lpr_core/DEA/dea_solver.hpp"
+#include "./lpr_core/adding_acts_cons/adding_activities_and_constraints.hpp"
+
 #include <iostream>
 
-#include "dual_simplex.hpp"
-#include "branch_and_bound.hpp"
-#include "cutting_plane.hpp"
-#include "duality.hpp"
-#include "branch_and_bound_knapsack.hpp"
-#include "machine_scheduling_penalty.hpp"
-#include "tardiness_scheduler.hpp"
-#include "hungarian_algorithm.hpp"
-#include "nearest_neighbour_tsp.hpp"
-#include "cheapest_insertion_tsp.hpp"
-#include "adding_activities_and_constraints.hpp"
-#include "dea_solver.hpp"
-#include "goal_penalties_simplex.hpp"
-#include "goal_preemptive_simplex.hpp"
-#include "two_phase_simplex.hpp"
-#include "math_preliminaries.hpp"
-#include "sensitivity_analysis.hpp"
-#include "steepest_descent.hpp"
-#include "graphical_solver.hpp"
+int main(int argc, char *argv[])
+{
+    std::vector<double> objFunc = {60, 30, 20};
+    std::vector<std::vector<double>> constraints = {{8, 6, 1, 48, 0},
+                                                    {4, 2, 1.5, 20, 0},
+                                                    {2, 1.5, 0.5, 8, 0}};
 
+    std::vector<std::vector<double>> addedCon = {
+        {0, 0, 1, 5, 0},
+    };
 
-
-int main() {
-
-    std::cout << "no conflicts" << std::endl;
+    AddingActivitiesAndConstraints solver(true);
+    // solver.DoPreliminaries(objFunc, constraints, false);
+    // solver.DoAddActivity({1, 2, 4, 5});
+    solver.DoAddActivity(objFunc, constraints, false, {20, -1, -1, -1});
+    // solver.DoAddConstraint(objFunc, constraints, false, addedCon);
 
     return 0;
 }

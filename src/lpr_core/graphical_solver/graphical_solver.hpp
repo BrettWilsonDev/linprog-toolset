@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
-using namespace std;
+// using namespace std;
 
 struct Point2d
 {
@@ -32,10 +32,10 @@ struct Segment
 
 struct GraphData
 {
-    vector<Segment> lineSegments;
-    vector<Point2d> feasiblePoint2ds;
-    vector<Point2d> intersectionPoint2ds;
-    vector<Point2d> feasibleHull;
+    std::vector<Segment> lineSegments;
+    std::vector<Point2d> feasiblePoint2ds;
+    std::vector<Point2d> intersectionPoint2ds;
+    std::vector<Point2d> feasibleHull;
     Point2d optimalPoint2d;
     double optimalValue;
 };
@@ -45,13 +45,13 @@ class GraphicalSolver
 private:
     bool isConsoleOutput;
     int testInputSelected;
-    string problemType;
+    std::string problemType;
     int amtOfObjVars;
-    vector<double> objFunc;
+    std::vector<double> objFunc;
     int amtOfConstraints;
-    vector<vector<double>> constraints;
-    vector<string> signItems;
-    vector<int> signItemsChoices;
+    std::vector<std::vector<double>> constraints;
+    std::vector<std::string> signItems;
+    std::vector<int> signItemsChoices;
     double optimalValue;
     Point2d optimalPoint2d;
 
@@ -60,12 +60,12 @@ private:
         return (p2.x - p1.x) * (p3.y - p2.y) - (p2.y - p1.y) * (p3.x - p2.x);
     }
 
-    vector<Point2d> grahamScan(vector<Point2d> Point2ds) const
+    std::vector<Point2d> grahamScan(std::vector<Point2d> Point2ds) const
     {
         if (Point2ds.size() < 3)
             return Point2ds;
         sort(Point2ds.begin(), Point2ds.end());
-        vector<Point2d> lowerHull;
+        std::vector<Point2d> lowerHull;
         for (const auto &p : Point2ds)
         {
             while (lowerHull.size() >= 2 && crossProduct(lowerHull[lowerHull.size() - 2], lowerHull.back(), p) < 0)
@@ -74,7 +74,7 @@ private:
             }
             lowerHull.push_back(p);
         }
-        vector<Point2d> upperHull;
+        std::vector<Point2d> upperHull;
         for (auto it = Point2ds.rbegin(); it != Point2ds.rend(); ++it)
         {
             const auto &p = *it;
@@ -107,10 +107,10 @@ public:
         optimalPoint2d = Point2d(0.0, 0.0);
     }
 
-    tuple<vector<double>, vector<vector<double>>, bool> testInput(int testNum = -1)
+    std::tuple<std::vector<double>, std::vector<std::vector<double>>, bool> testInput(int testNum = -1)
     {
-        vector<double> of;
-        vector<vector<double>> cons;
+        std::vector<double> of;
+        std::vector<std::vector<double>> cons;
         bool isMin = false;
         if (testNum == 0)
         {
@@ -152,10 +152,10 @@ public:
         return Point2d(x, y);
     }
 
-    vector<Point2d> getEndPoint2ds(const vector<double> &con, pair<double, double> xBounds, pair<double, double> yBounds) const
+    std::vector<Point2d> getEndPoint2ds(const std::vector<double> &con, std::pair<double, double> xBounds, std::pair<double, double> yBounds) const
     {
         double a = con[0], b = con[1], c = con[2];
-        vector<Point2d> Point2ds;
+        std::vector<Point2d> Point2ds;
         if (fabs(b) > 1e-12)
         {
             double y1 = (c - a * xBounds.first) / b;
@@ -190,9 +190,9 @@ public:
         return Point2ds;
     }
 
-    tuple<vector<Point2d>, vector<Point2d>, vector<Point2d>> getSortedPoint2ds(const vector<vector<double>> &cons)
+    std::tuple<std::vector<Point2d>, std::vector<Point2d>, std::vector<Point2d>> getSortedPoint2ds(const std::vector<std::vector<double>> &cons)
     {
-        vector<Point2d> intersectionPoint2ds;
+        std::vector<Point2d> intersectionPoint2ds;
         size_t numConstraints = cons.size();
         for (size_t i = 0; i < numConstraints; ++i)
         {
@@ -212,7 +212,7 @@ public:
         {
             if (fabs(constraint[0]) > 1e-12)
             {
-                maxX = max(maxX, constraint[2]);
+                maxX = std::max(maxX, constraint[2]);
             }
         }
         double maxY = 0.0;
@@ -220,24 +220,24 @@ public:
         {
             if (fabs(constraint[1]) > 1e-12)
             {
-                maxY = max(maxY, constraint[2]);
+                maxY = std::max(maxY, constraint[2]);
             }
         }
-        pair<double, double> xBounds = {0.0, maxX};
-        pair<double, double> yBounds = {0.0, maxY};
+        std::pair<double, double> xBounds = {0.0, maxX};
+        std::pair<double, double> yBounds = {0.0, maxY};
 
-        vector<Point2d> endPoint2ds;
+        std::vector<Point2d> endPoint2ds;
         for (const auto &constraint : cons)
         {
-            vector<Point2d> pts = getEndPoint2ds(constraint, xBounds, yBounds);
+            std::vector<Point2d> pts = getEndPoint2ds(constraint, xBounds, yBounds);
             endPoint2ds.insert(endPoint2ds.end(), pts.begin(), pts.end());
         }
 
-        vector<Point2d> allPoint2ds = intersectionPoint2ds;
+        std::vector<Point2d> allPoint2ds = intersectionPoint2ds;
         allPoint2ds.insert(allPoint2ds.end(), endPoint2ds.begin(), endPoint2ds.end());
         allPoint2ds.emplace_back(0.0, 0.0);
 
-        vector<Point2d> feasiblePoint2ds;
+        std::vector<Point2d> feasiblePoint2ds;
         double eps = 1e-9;
         for (const auto &Point2d : allPoint2ds)
         {
@@ -279,7 +279,7 @@ public:
         }
 
         // Remove duplicates and sort
-        set<Point2d> uniqueFeasible(feasiblePoint2ds.begin(), feasiblePoint2ds.end());
+        std::set<Point2d> uniqueFeasible(feasiblePoint2ds.begin(), feasiblePoint2ds.end());
         feasiblePoint2ds.assign(uniqueFeasible.begin(), uniqueFeasible.end());
         sort(feasiblePoint2ds.begin(), feasiblePoint2ds.end());
 
@@ -288,32 +288,32 @@ public:
         auto uniqueEndIt = unique(endPoint2ds.begin(), endPoint2ds.end(), [](const Point2d &p1, const Point2d &p2)
                                   { return p1 == p2; });
         endPoint2ds.erase(uniqueEndIt, endPoint2ds.end());
-        vector<Point2d> lineSegmentPoint2ds = endPoint2ds;
+        std::vector<Point2d> lineSegmentPoint2ds = endPoint2ds;
 
         if (isConsoleOutput)
         {
-            cout << "\nlineSegments" << endl;
+            std::cout << "\nlineSegments" << std::endl;
             for (size_t i = 0; i < lineSegmentPoint2ds.size(); i += 2)
             {
                 if (i + 1 < lineSegmentPoint2ds.size())
                 {
-                    cout << " (start: (" << lineSegmentPoint2ds[i].x << ", " << lineSegmentPoint2ds[i].y
-                         << ") end: (" << lineSegmentPoint2ds[i + 1].x << ", " << lineSegmentPoint2ds[i + 1].y << "))" << endl;
+                    std::cout << " (start: (" << lineSegmentPoint2ds[i].x << ", " << lineSegmentPoint2ds[i].y
+                         << ") end: (" << lineSegmentPoint2ds[i + 1].x << ", " << lineSegmentPoint2ds[i + 1].y << "))" << std::endl;
                 }
             }
-            cout << "\nfeasible region" << endl;
+            std::cout << "\nfeasible region" << std::endl;
             for (const auto &p : feasiblePoint2ds)
             {
-                cout << "(" << p.x << ", " << p.y << ") ";
+                std::cout << "(" << p.x << ", " << p.y << ") ";
             }
-            cout << "\n"
-                 << endl;
+            std::cout << "\n"
+                 << std::endl;
         }
 
         return {feasiblePoint2ds, lineSegmentPoint2ds, intersectionPoint2ds};
     }
 
-    pair<double, Point2d> solveGraphical(const vector<double> &objFunc, const vector<Point2d> &feasiblePoint2ds, bool isMin = false)
+    std::pair<double, Point2d> solveGraphical(const std::vector<double> &objFunc, const std::vector<Point2d> &feasiblePoint2ds, bool isMin = false)
     {
         if (feasiblePoint2ds.empty())
         {
@@ -323,7 +323,7 @@ public:
         {
             return objFunc[0] * x + objFunc[1] * y;
         };
-        vector<double> objectiveValues;
+        std::vector<double> objectiveValues;
         for (const auto &p : feasiblePoint2ds)
         {
             objectiveValues.push_back(evaluateObjective(p.x, p.y));
@@ -345,16 +345,16 @@ public:
         Point2d optimalPt = feasiblePoint2ds[optimalIdx];
         if (isConsoleOutput)
         {
-            cout << "Optimal value: " << optimalVal << " at (" << optimalPt.x << ", " << optimalPt.y << ")" << endl;
+            std::cout << "Optimal value: " << optimalVal << " at (" << optimalPt.x << ", " << optimalPt.y << ")" << std::endl;
         }
         return {optimalVal, optimalPt};
     }
 
-    GraphData drawGraph(const vector<Point2d> &feasiblePoint2ds, const vector<Point2d> &lineSegmentPoint2ds,
-                        const vector<Point2d> &intersectionPoint2ds, Point2d optimalPoint2d = Point2d(), double optimalValue = NAN)
+    GraphData drawGraph(const std::vector<Point2d> &feasiblePoint2ds, const std::vector<Point2d> &lineSegmentPoint2ds,
+                        const std::vector<Point2d> &intersectionPoint2ds, Point2d optimalPoint2d = Point2d(), double optimalValue = NAN)
     {
         // Pair line segment Point2ds every 2 (matching Python logic)
-        vector<Segment> segments;
+        std::vector<Segment> segments;
         for (size_t i = 0; i < lineSegmentPoint2ds.size(); i += 2)
         {
             if (i + 1 < lineSegmentPoint2ds.size())
@@ -364,7 +364,7 @@ public:
         }
 
         // Compute feasible hull using Graham scan
-        vector<Point2d> hull = grahamScan(feasiblePoint2ds);
+        std::vector<Point2d> hull = grahamScan(feasiblePoint2ds);
 
         GraphData data;
         data.lineSegments = segments;
