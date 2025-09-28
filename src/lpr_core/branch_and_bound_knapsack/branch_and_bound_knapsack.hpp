@@ -1,5 +1,4 @@
-#ifndef BRANCH_AND_BOUND_KNAPSACK_HPP
-#define BRANCH_AND_BOUND_KNAPSACK_HPP
+#pragma once
 
 #include <vector>
 #include <map>
@@ -7,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
+#include <sstream>
 
 class KnapsackItem
 {
@@ -34,6 +34,7 @@ public:
     std::map<int, int> fixedVariables;
     KnapsackNode *parent;
     std::vector<KnapsackNode *> children;
+    std::string consoleOutput; // Store cout output for this node
 
     KnapsackNode(int lvl, double prf, int wgt, double bnd,
                  const std::map<int, int> &fixedVars = std::map<int, int>(),
@@ -47,6 +48,68 @@ public:
             delete child;
         }
     }
+
+    // Helper to escape JSON strings
+    std::string escapeJsonString(const std::string &input) const
+    {
+        std::stringstream ss;
+        for (char c : input)
+        {
+            switch (c)
+            {
+            case '\"':
+                ss << "\\\"";
+                break;
+            case '\\':
+                ss << "\\\\";
+                break;
+            case '\n':
+                ss << "\\n";
+                break;
+            case '\t':
+                ss << "\\t";
+                break;
+            case '\r':
+                ss << "\\r";
+                break;
+            default:
+                ss << c;
+                break;
+            }
+        }
+        return ss.str();
+    }
+
+    std::string serialize() const
+    {
+        std::stringstream ss;
+        ss << "{";
+        ss << "\"level\":" << level << ",";
+        ss << "\"profit\":" << profit << ",";
+        ss << "\"weight\":" << weight << ",";
+        ss << "\"bound\":" << bound << ",";
+        ss << "\"fixedVariables\":{";
+        bool first = true;
+        for (const auto &kv : fixedVariables)
+        {
+            if (!first)
+                ss << ",";
+            ss << "\"" << kv.first << "\":" << kv.second;
+            first = false;
+        }
+        ss << "},";
+        ss << "\"consoleOutput\":\"" << escapeJsonString(consoleOutput) << "\",";
+        ss << "\"children\":[";
+        for (size_t i = 0; i < children.size(); ++i)
+        {
+            if (i > 0)
+                ss << ",";
+            ss << children[i]->serialize();
+        }
+        ss << "]";
+        ss << "}";
+        return ss.str();
+    }
 };
 
 class BranchAndBoundKnapsack
@@ -59,10 +122,14 @@ private:
     double bestValue;
     std::vector<int> bestSolution;
     std::vector<int> branchingOrder;
+    KnapsackNode *rootNode;
+    std::stringstream consoleBuffer; // Capture all console output
+
+    std::string ranking = "";
 
 public:
     BranchAndBoundKnapsack(const std::vector<int> &vals, const std::vector<int> &wgts, int cap)
-        : values(vals), weights(wgts), capacity(cap), bestValue(0)
+        : values(vals), weights(wgts), capacity(cap), bestValue(0), rootNode(nullptr)
     {
         for (size_t i = 0; i < vals.size(); ++i)
         {
@@ -79,11 +146,36 @@ public:
         branchingOrder = std::vector<int>(indices.begin(), indices.end());
     }
 
+    ~BranchAndBoundKnapsack()
+    {
+        delete rootNode;
+    }
+
+    std::string getTreeJSON() const
+    {
+        if (rootNode)
+            return rootNode->serialize();
+        return "{}";
+    }
+
+    std::string getConsoleOutput() const
+    {
+        return consoleBuffer.str();
+    }
+
+    void printTreeJSON() const
+    {
+        std::cout << "Serialized Tree JSON:\n"
+                  << getTreeJSON() << std::endl;
+    }
+
+    std::string getRanking() const { return ranking; }
+
     std::vector<KnapsackItem> DisplayRatioTest()
     {
-        Logger::WriteLine("Branch & Bound Algorithm - Knapsack Method");
-        Logger::WriteLine("Ratio Test");
-        Logger::WriteLine("Item   z_i/c_i   Rank");
+        consoleBuffer << "Branch & Bound Algorithm - Knapsack Method\n";
+        consoleBuffer << "Ratio Test\n";
+        consoleBuffer << "Item  z_i/c_i           Rank\n";
 
         auto sortedItems = items;
         std::sort(sortedItems.begin(), sortedItems.end(),
@@ -96,14 +188,28 @@ public:
             rankMap[sortedItems[rank].index] = rank + 1;
         }
 
+        // for (const auto &item : items)
+        // {
+        //     std::string line = item.name + "    " + std::to_string(item.value) + "/" + std::to_string(item.weight) + " = " + std::to_string(item.ratio).substr(0, std::to_string(item.ratio).find(".") + 4) + "    " + std::to_string(rankMap[item.index]) + "\n";
+        //     consoleBuffer << line;
+        // }
+        // consoleBuffer << "\n";
+
         for (const auto &item : items)
         {
-            Logger::WriteLine(item.name + "    " + std::to_string(item.value) + "/" +
-                              std::to_string(item.weight) + " = " +
-                              std::to_string(item.ratio).substr(0, std::to_string(item.ratio).find(".") + 4) +
-                              "    " + std::to_string(rankMap[item.index]));
+            consoleBuffer
+                << std::left << std::setw(5) << item.name // align names
+                << std::right << std::setw(4) << item.value
+                << "/"
+                << std::left << std::setw(4) << item.weight
+                << "= "
+                << std::fixed << std::setprecision(3) << std::setw(8) << item.ratio
+                << std::setw(5) << rankMap[item.index]
+                << "\n";
         }
-        Logger::WriteLine("");
+        consoleBuffer << "\n";
+
+        this->ranking = consoleBuffer.str();
         return sortedItems;
     }
 
@@ -134,10 +240,18 @@ public:
         return upperBound;
     }
 
-    double DisplaySubProblem(const KnapsackNode &node, const std::vector<KnapsackItem> &sortedItems,
+    double DisplaySubProblem(KnapsackNode &node, const std::vector<KnapsackItem> &sortedItems,
                              const std::string &subProblemNumber, bool isRoot = false)
     {
-        Logger::WriteLine(subProblemNumber.empty() ? "Sub-Problem" : "Sub-Problem " + subProblemNumber);
+        std::stringstream ss;
+        if (subProblemNumber.empty())
+        {
+            ss << "Sub-Problem\n";
+        }
+        else
+        {
+            ss << "Sub-Problem " << subProblemNumber << "\n";
+        }
 
         int remainingCapacity = capacity;
         double totalValue = 0;
@@ -154,17 +268,14 @@ public:
 
             if (value == 1)
             {
-                Logger::WriteLine("* " + item.name + " = " + std::to_string(value) + "    " +
-                                  std::to_string(remainingCapacity) + "-" + std::to_string(item.weight) +
-                                  "=" + std::to_string(remainingCapacity - item.weight));
+                ss << "* " << item.name << " = " << std::to_string(value) << "    " << std::to_string(remainingCapacity) << "-" + std::to_string(item.weight) << "=" << std::to_string(remainingCapacity - item.weight) << "\n";
                 remainingCapacity -= item.weight;
                 totalValue += item.value;
                 fixedItems.push_back(itemIndex);
             }
             else if (value == 0)
             {
-                Logger::WriteLine("* " + item.name + " = " + std::to_string(value) + "    " +
-                                  std::to_string(remainingCapacity) + "-0=" + std::to_string(remainingCapacity));
+                ss << "* " << item.name << " = " << std::to_string(value) << "    " << std::to_string(remainingCapacity) << "-0=" << std::to_string(remainingCapacity) << "\n";
                 fixedItems.push_back(itemIndex);
             }
         }
@@ -176,31 +287,33 @@ public:
 
             if (remainingCapacity >= item.weight)
             {
-                Logger::WriteLine(item.name + " = 1    " + std::to_string(remainingCapacity) + "-" +
-                                  std::to_string(item.weight) + "=" + std::to_string(remainingCapacity - item.weight));
+                ss << item.name << " = 1    " << std::to_string(remainingCapacity) << "-" << std::to_string(item.weight) << "=" << std::to_string(remainingCapacity - item.weight) << "\n";
                 remainingCapacity -= item.weight;
                 totalValue += item.value;
             }
             else if (remainingCapacity > 0)
             {
                 std::string fractionalDisplay = std::to_string(remainingCapacity) + "/" + std::to_string(item.weight);
-                Logger::WriteLine(item.name + " = " + fractionalDisplay + "    " +
-                                  std::to_string(remainingCapacity) + "-" + std::to_string(item.weight));
+                ss << item.name << " = " << fractionalDisplay << "    " << std::to_string(remainingCapacity) << "-" << std::to_string(item.weight) << "\n";
                 totalValue += (static_cast<double>(remainingCapacity) / item.weight) * item.value;
                 remainingCapacity = 0;
             }
             else
             {
-                Logger::WriteLine(item.name + " = 0");
+                ss << item.name << " = 0\n";
             }
         }
-        Logger::WriteLine("");
+        ss << "\n";
+        node.consoleOutput = ss.str();
+        consoleBuffer << ss.str();
+        // std::cout << ss.str();
         return totalValue;
     }
 
     void DisplayIntegerModel()
     {
-        Logger::WriteLine("Integer Programming Model");
+        std::stringstream ss;
+        ss << "Integer Programming Model\n";
         std::string valueStr;
         for (size_t i = 0; i < values.size(); ++i)
         {
@@ -208,7 +321,7 @@ public:
             if (i < values.size() - 1)
                 valueStr += " + ";
         }
-        Logger::WriteLine("max z = " + valueStr);
+        ss << "max z = " << valueStr << "\n";
 
         std::string weightStr;
         for (size_t i = 0; i < weights.size(); ++i)
@@ -217,9 +330,10 @@ public:
             if (i < weights.size() - 1)
                 weightStr += " + ";
         }
-        Logger::WriteLine("s.t " + weightStr + " ≤ " + std::to_string(capacity));
-        Logger::WriteLine("xi = 0 or 1");
-        Logger::WriteLine("");
+        ss << "s.t " << weightStr << " <= " << std::to_string(capacity) << "\n";
+        ss << "xi = 0 or 1\n\n";
+        consoleBuffer << ss.str();
+        // std::cout << ss.str();
     }
 
     bool IsFeasible(const KnapsackNode &node)
@@ -307,23 +421,26 @@ public:
 
         node.fixedVariables = newFixedVars;
         node.profit = newProfit;
+        std::string msg = "Integer Relaxation Applied\n";
+        node.consoleOutput += msg;
+        consoleBuffer << msg;
+        // std::cout << msg;
         return true;
     }
 
-    // void SolveRecursive(KnapsackNode &node, const std::vector<KnapsackItem> &sortedItems,
-    //                     const std::string &nodeLabel = "", std::vector<int> &candidateCounter = std::vector<int>{0})
-void SolveRecursive(KnapsackNode &node, const std::vector<KnapsackItem> &sortedItems,
-                    const std::string &nodeLabel = "", std::vector<int> candidateCounter = std::vector<int>{0})
-{
-    if (candidateCounter.empty())
+    void SolveRecursive(KnapsackNode &node, const std::vector<KnapsackItem> &sortedItems, const std::string &nodeLabel = "", std::vector<int> candidateCounter = {0})
     {
-        candidateCounter = std::vector<int>{0};
-    }
-
+        if (candidateCounter.empty())
+        {
+            candidateCounter = {0};
+        }
 
         if (!IsFeasible(node))
         {
-            Logger::WriteLine("Infeasible\n");
+            std::string msg = "Infeasible\n";
+            node.consoleOutput += msg;
+            consoleBuffer << msg;
+            // std::cout << msg;
             return;
         }
 
@@ -377,6 +494,10 @@ void SolveRecursive(KnapsackNode &node, const std::vector<KnapsackItem> &sortedI
 
             node.fixedVariables = newFixedVars;
             node.profit = newProfit;
+            std::string msg = "Integer Relaxation Applied\n";
+            node.consoleOutput += msg;
+            consoleBuffer << msg;
+            // std::cout << msg;
             FinalizeCandidate(node, candidateCounter);
             return;
         }
@@ -389,8 +510,10 @@ void SolveRecursive(KnapsackNode &node, const std::vector<KnapsackItem> &sortedI
         std::vector<std::string> childLabels = nodeLabel.empty() ? std::vector<std::string>{"1", "2"} : std::vector<std::string>{nodeLabel + ".1", nodeLabel + ".2"};
         std::string branchDisplay = nodeLabel.empty() ? "Sub-P 1: x" + std::to_string(nextVarIndex + 1) + " = 0    Sub-P 2: x" + std::to_string(nextVarIndex + 1) + " = 1" : "Sub-P " + nodeLabel + ".1: x" + std::to_string(nextVarIndex + 1) + " = 0    Sub-P " + nodeLabel + ".2: x" + std::to_string(nextVarIndex + 1) + " = 1";
 
-        Logger::WriteLine(branchDisplay);
-        Logger::WriteLine("==========================================================");
+        consoleBuffer << branchDisplay << "\n";
+        consoleBuffer << std::string(60, '=') << "\n";
+        // std::cout << branchDisplay << "\n";
+        // std::cout << std::string(60, '=') << "\n";
 
         for (int i = 0; i < 2; ++i)
         {
@@ -409,29 +532,46 @@ void SolveRecursive(KnapsackNode &node, const std::vector<KnapsackItem> &sortedI
 
             KnapsackNode *newNode = new KnapsackNode(node.level + 1, newProfit, newWeight, 0, newFixedVars, &node);
             std::string currentLabel = childLabels[i];
-            DisplaySubProblem(*newNode, sortedItems, "Sub-P " + currentLabel);
+            // DisplaySubProblem(*newNode, sortedItems, "Sub-P " + currentLabel + "\\n");
+            // DisplaySubProblem(*newNode, sortedItems, currentLabel + "\n" + branchDisplay + "\n");
+            if (currentLabel.substr(currentLabel.length() - 1) == "1")
+            {
+                DisplaySubProblem(*newNode, sortedItems, currentLabel + " : x" + std::to_string(nextVarIndex + 1) + " = 0\n");
+            }
+            else
+            {
+                DisplaySubProblem(*newNode, sortedItems, currentLabel + " : x" + std::to_string(nextVarIndex + 1) + " = 1\n");
+            }
+            // DisplaySubProblem(*newNode, sortedItems, branchDisplay);
 
             if (!IsFeasible(*newNode))
             {
-                Logger::WriteLine("Infeasible\n");
+                std::string msg = "Infeasible\n";
+                newNode->consoleOutput += msg;
+                consoleBuffer << msg;
+                // std::cout << msg;
+                node.children.push_back(newNode);
             }
             else
             {
                 if (IsIntegerRelaxation(*newNode, sortedItems))
                 {
                     FinalizeCandidate(*newNode, candidateCounter);
-                    delete newNode;
-                    continue;
+                    node.children.push_back(newNode);
                 }
-                newNode->bound = CalculateUpperBound(*newNode, sortedItems);
-                SolveRecursive(*newNode, sortedItems, currentLabel, candidateCounter);
+                else
+                {
+                    newNode->bound = CalculateUpperBound(*newNode, sortedItems);
+                    SolveRecursive(*newNode, sortedItems, currentLabel, candidateCounter);
+                    node.children.push_back(newNode);
+                }
             }
-            node.children.push_back(newNode);
         }
     }
 
     void FinalizeCandidate(const KnapsackNode &node, std::vector<int> &candidateCounter)
     {
+        std::stringstream ss;
         std::vector<int> selectedItems;
         for (size_t i = 0; i < items.size(); ++i)
         {
@@ -450,16 +590,16 @@ void SolveRecursive(KnapsackNode &node, const std::vector<KnapsackItem> &sortedI
                 if (i < selectedItems.size() - 1)
                     valueTerms += " + ";
             }
-            Logger::WriteLine("z = " + valueTerms + " = " + std::to_string(static_cast<int>(node.profit)));
+            ss << "z = " << valueTerms << " = " << static_cast<int>(node.profit) << "\n";
         }
         else
         {
-            Logger::WriteLine("z = 0");
+            ss << "z = 0\n";
         }
 
         candidateCounter[0]++;
         char candidateLetter = static_cast<char>(65 + candidateCounter[0] - 1);
-        Logger::WriteLine("Candidate " + std::string(1, candidateLetter));
+        ss << "Candidate " << candidateLetter << "\n";
 
         if (node.profit > bestValue)
         {
@@ -470,23 +610,29 @@ void SolveRecursive(KnapsackNode &node, const std::vector<KnapsackItem> &sortedI
             {
                 bestSolution[i] = node.fixedVariables.find(i) != node.fixedVariables.end() ? node.fixedVariables.at(i) : 0;
             }
-            Logger::WriteLine("Best Candidate");
+            ss << "Best Candidate\n";
         }
-        Logger::WriteLine("");
+        ss << "\n";
+        const_cast<KnapsackNode &>(node).consoleOutput += ss.str();
+        consoleBuffer << ss.str();
+        // std::cout << ss.str();
     }
 
     std::pair<double, std::vector<int>> Solve()
     {
-        Logger::WriteLine(std::string(60, '='));
+        consoleBuffer << std::string(60, '=') << "\n";
+        // std::cout << std::string(60, '=') << "\n";
         auto sortedItems = DisplayRatioTest();
         DisplayIntegerModel();
 
-        KnapsackNode rootNode(0, 0, 0, 0);
-        rootNode.bound = CalculateUpperBound(rootNode, sortedItems);
-        DisplaySubProblem(rootNode, sortedItems, "", true);
+        rootNode = new KnapsackNode(0, 0, 0, 0);
+        rootNode->bound = CalculateUpperBound(*rootNode, sortedItems);
+        DisplaySubProblem(*rootNode, sortedItems, " ", true);
 
         std::vector<int> candidateCounter = {0};
-        SolveRecursive(rootNode, sortedItems, "", candidateCounter);
+        SolveRecursive(*rootNode, sortedItems, "", candidateCounter);
+
+        // printTreeJSON(); // Print JSON to console for testing
 
         return {bestValue, bestSolution};
     }
@@ -497,8 +643,8 @@ class KnapSack
 public:
     KnapSack(bool isConsoleOutput = false) {}
 
-    void RunBranchAndBoundKnapSack(const std::vector<double> &objFuncPassed,
-                                   const std::vector<std::vector<double>> &constraintsPassed)
+    std::string RunBranchAndBoundKnapSack(const std::vector<double> &objFuncPassed,
+                                          const std::vector<std::vector<double>> &constraintsPassed)
     {
         std::vector<int> values(objFuncPassed.begin(), objFuncPassed.end());
         std::vector<int> weights(constraintsPassed[0].begin(), constraintsPassed[0].end() - 2);
@@ -507,14 +653,15 @@ public:
         BranchAndBoundKnapsack knapsackSolver(values, weights, capacity);
         auto [bestValue, bestSolution] = knapsackSolver.Solve();
 
-        Logger::WriteLine(std::string(60, '='));
-        Logger::WriteLine("FINAL SOLUTION:");
-        Logger::WriteLine("Maximum value: " + std::to_string(bestValue));
-        Logger::WriteLine("Solution vector:");
+        std::stringstream ss;
+        ss << std::string(60, '=') << "\n";
+        ss << "FINAL SOLUTION:\n";
+        ss << "Maximum value: " << bestValue << "\n";
+        ss << "Solution vector:\n";
 
         for (size_t i = 0; i < bestSolution.size(); ++i)
         {
-            Logger::WriteLine("x" + std::to_string(i + 1) + " = " + std::to_string(bestSolution[i]));
+            ss << "x" << i + 1 << " = " << bestSolution[i] << "\n";
         }
 
         int totalWeight = 0;
@@ -525,10 +672,36 @@ public:
             totalValue += values[i] * bestSolution[i];
         }
 
-        Logger::WriteLine("\nVerification:");
-        Logger::WriteLine("Total weight: " + std::to_string(totalWeight) + " (<= " + std::to_string(capacity) + ")");
-        Logger::WriteLine("Total value: " + std::to_string(totalValue));
-    }
-};
+        ss << "\nVerification:\n";
+        ss << "Total weight: " << std::to_string(totalWeight) << " (<= " << std::to_string(capacity) << ")\n";
+        ss << "Total value: " << std::to_string(totalValue) << "\n";
 
-#endif // BRANCH_AND_BOUND_KNAPSACK_HPP
+        this->ranking = knapsackSolver.getRanking();
+        this->finalSolution = ss.str();
+
+        this->json = knapsackSolver.getTreeJSON();
+
+        return knapsackSolver.getTreeJSON() + "\n" + knapsackSolver.getConsoleOutput();
+    }
+
+    std::string getJSON() const
+    {
+        return this->json;
+    }
+
+    std::string getRanking() const
+    {
+        return this->ranking;
+    }
+
+    std::string getFinalSolution() const
+    {
+        return this->finalSolution;
+    }
+
+private:
+    std::string json = "{}";
+
+    std::string ranking = "";
+    std::string finalSolution = "";
+};

@@ -1,5 +1,4 @@
-#ifndef JOB_SCHEDULER_HPP
-#define JOB_SCHEDULER_HPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -441,5 +440,3 @@ public:
         scheduler.solve();
     }
 };
-
-#endif // JOB_SCHEDULER_HPP

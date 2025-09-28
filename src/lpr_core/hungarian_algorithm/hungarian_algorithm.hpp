@@ -1,5 +1,4 @@
-#ifndef HUNGARIAN_ALGORITHM_HPP
-#define HUNGARIAN_ALGORITHM_HPP
+#pragma once
 
 #include <vector>
 #include <iostream>
@@ -593,6 +592,3 @@ public:
         std::cout << "\nTotal cost: " << result.second << "\n";
     }
 };
-
-
-#endif // HUNGARIAN_ALGORITHM_HPP

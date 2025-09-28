@@ -301,17 +301,20 @@ public:
         // }
         // // Logger::WriteLine("");
 
-        std::cout << name << std::endl;
-        auto transposed = MatTranspose(M);
-        for (const auto &row : transposed)
+        if (isConsoleOutput)
         {
-            for (double val : row)
+            std::cout << name << std::endl;
+            auto transposed = MatTranspose(M);
+            for (const auto &row : transposed)
             {
-                std::cout << val << "    ";
+                for (double val : row)
+                {
+                    std::cout << val << "    ";
+                }
+                std::cout << std::endl;
             }
             std::cout << std::endl;
         }
-        std::cout << std::endl;
     }
 
     void DoPreliminaries(const std::vector<double> &objFunc, const std::vector<std::vector<double>> &constraints, bool isMin)
@@ -556,7 +559,10 @@ public:
             oss << displayCol[i];
         }
         // Logger::WriteLine(oss.str());
-        std::cout << oss.str() << std::endl;
+        if (isConsoleOutput)
+        {
+            std::cout << oss.str() << std::endl;
+        }
 
         auto reOptTab = this->revisedTab;
 
@@ -646,27 +652,29 @@ public:
 
         // Print title
         // Logger::WriteLine(title);
-        std::cout << title << std::endl;
-
-        // Print headers
-        for (const auto &header : tempHeaderStr)
+        if (isConsoleOutput)
         {
-            std::cout << std::setw(10) << header; // wider for readability
-        }
-        std::cout << "\n";
-
-        // Print rows
-        for (const auto &row : tableau)
-        {
-            for (const auto &val : row)
+            std::cout << title << std::endl;
+            // Print headers
+            for (const auto &header : tempHeaderStr)
             {
-                std::cout << std::setw(10) << std::fixed << std::setprecision(4) << RoundValue(val);
+                std::cout << std::setw(10) << header; // wider for readability
             }
             std::cout << "\n";
-        }
 
-        // Logger::WriteLine("");
-        std::cout << std::endl;
+            // Print rows
+            for (const auto &row : tableau)
+            {
+                for (const auto &val : row)
+                {
+                    std::cout << std::setw(10) << std::fixed << std::setprecision(4) << RoundValue(val);
+                }
+                std::cout << "\n";
+            }
+
+            // Logger::WriteLine("");
+            std::cout << std::endl;
+        }
     }
 
     std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
@@ -675,7 +683,10 @@ public:
         if (overRideTab.empty())
         {
             // Logger::WriteLine("needs an input table");
-            std::cout << "needs an input table" << std::endl;
+            if (isConsoleOutput)
+            {
+                std::cout << "needs an input table" << std::endl;
+            }
             return {{}, {}};
         }
 

@@ -1,5 +1,4 @@
-#ifndef BRANCH_AND_BOUND_HPP
-#define BRANCH_AND_BOUND_HPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -992,5 +991,3 @@ private:
         return copy;
     }
 };
-
-#endif

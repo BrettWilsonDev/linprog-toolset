@@ -1,5 +1,4 @@
-#ifndef NEAREST_NEIGHBOUR_TSP_HPP
-#define NEAREST_NEIGHBOUR_TSP_HPP
+#pragma once
 
 #include <vector>
 #include <iostream>
@@ -318,6 +317,3 @@ public:
         // std::cout << "\nTotal distance: " << quickCost << "\n";
     }
 };
-
-
-#endif // NEAREST_NEIGHBOUR_TSP_HPP

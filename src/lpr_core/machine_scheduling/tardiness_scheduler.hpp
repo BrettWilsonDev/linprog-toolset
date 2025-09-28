@@ -1,5 +1,4 @@
-#ifndef TARDINESS_SCHEDULER_HPP
-#define TARDINESS_SCHEDULER_HPP
+#pragma once
 
 #include <vector>
 #include <string>
@@ -373,6 +372,3 @@ public:
         scheduler.solve();
     }
 };
-
-
-#endif // TARDINESS_SCHEDULER_HPP

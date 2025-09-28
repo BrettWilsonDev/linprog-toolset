@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <string>
 #include <iomanip>
@@ -281,8 +283,11 @@ public:
         dualityResult += oss.str();
 
         // optional console printing
-        if (printToConsole)
+        // if (printToConsole)
+        if (isConsoleOutput)
+        {
             std::cout << oss.str();
+        }
     }
 
     std::tuple<std::vector<double>, double, std::vector<double>,
@@ -471,8 +476,12 @@ public:
 
         DoDuality(objFunc, constraints, isMin);
 
-        std::cout << dualityResult << "\n"
-                  << std::endl;
+        if (isConsoleOutput)
+        {
+            std::cout << dualityResult << "\n"
+                      << std::endl;
+        }
+
     }
 
     void PrintShadowPrice()

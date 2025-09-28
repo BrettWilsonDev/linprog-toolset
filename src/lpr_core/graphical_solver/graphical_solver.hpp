@@ -1,4 +1,4 @@
-// #include <bits/stdc++.h>
+#pragma once
 
 #include <iostream>
 #include <vector>

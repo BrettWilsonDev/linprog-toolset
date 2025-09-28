@@ -1,5 +1,4 @@
-#ifndef CHEAPEST_INSERTION_TSP_HPP
-#define CHEAPEST_INSERTION_TSP_HPP
+#pragma once
 
 #include <vector>
 #include <iostream>
@@ -522,5 +521,3 @@ public:
         std::cout << "\nTotal distance: " << totalCost << "\n";
     }
 };
-
-#endif // CHEAPEST_INSERTION_TSP_HPP
