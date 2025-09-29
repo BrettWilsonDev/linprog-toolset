@@ -75,6 +75,7 @@
     <button onclick="loadUI('dea')">Data Envelopment Analysis</button>
     <button onclick="loadUI('adding_activities_and_constraints')">Adding Activities And Constraints</button>
     <button onclick="loadUI('knapsack')">knapsack</button>
+    <button onclick="loadUI('branch_and_bound')">branch and bound</button>
     <button onclick="loadUI('simplex')">Simplex</button>
   </aside>
 
@@ -98,6 +99,7 @@
     import * as dea from "./ui/dea.js";
     import * as adding_activities_and_constraints from "./ui/adding_activities_and_constraints.js";
     import * as knapsack from "./ui/knapsack.js";
+    import * as branch_and_bound from "./ui/branch_and_bound.js";
     import * as simplex from "./ui/simplex.js";
 
     // Single global WASM module
@@ -129,6 +131,7 @@
       dea,
       adding_activities_and_constraints,
       knapsack,
+      branch_and_bound,
       simplex,
     };
 

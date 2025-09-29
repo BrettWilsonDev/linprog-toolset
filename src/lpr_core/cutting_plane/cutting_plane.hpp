@@ -17,7 +17,7 @@
 //         std::cout << message;
 //     }
 
-//     static void WriteLine(const std::string& message = "") {
+//     static void writeLine(const std::string& message = "") {
 //         std::cout << message << std::endl;
 //     }
 // };
@@ -96,7 +96,7 @@ public:
         tempHeaderStr.push_back("rhs");
 
         // Print title
-        Logger::WriteLine(title);
+        Logger::writeLine(title);
 
         // Print headers
         for (const auto &header : tempHeaderStr)
@@ -115,7 +115,7 @@ public:
             std::cout << "\n";
         }
 
-        Logger::WriteLine("");
+        Logger::writeLine("");
     }
 
     // void printTableau(const std::vector<std::vector<double>> &tableau, const std::string &title = "Tableau")
@@ -131,13 +131,13 @@ public:
     //     }
     //     tempHeaderStr.push_back("rhs");
 
-    //     Logger::WriteLine("" + title);
+    //     Logger::writeLine("" + title);
     //     for (const auto &header : tempHeaderStr)
     //     {
     //         // Logger::Write(std::setw(8) + header + "  ");
     //         std::cout << std::setw(8) << header << "  ";
     //     }
-    //     Logger::WriteLine("");
+    //     Logger::writeLine("");
 
     //     for (const auto &row : tableau)
     //     {
@@ -146,9 +146,9 @@ public:
     //             // Logger::Write(std::setw(8) + std::fixed + std::setprecision(4) + std::to_string(roundValue(val)) + "  ");
     //             std::cout << std::setw(8) << std::fixed << std::setprecision(precision) << std::to_string(roundValue(val)) << "  ";
     //         }
-    //         Logger::WriteLine("");
+    //         Logger::writeLine("");
     //     }
-    //     Logger::WriteLine("");
+    //     Logger::writeLine("");
     // }
 
     std::vector<std::vector<double>> roundMatrix(const std::vector<std::vector<double>> &matrix)
@@ -212,7 +212,7 @@ public:
             {
                 rowStr += std::to_string(roundValue(c)) + ", ";
             }
-            Logger::WriteLine("Original row: " + rowStr + "| " + std::to_string(roundValue(rhs)));
+            Logger::writeLine("Original row: " + rowStr + "| " + std::to_string(roundValue(rhs)));
         }
 
         std::vector<double> fracCoefs;
@@ -238,7 +238,7 @@ public:
             {
                 cutStr += std::to_string(roundValue(r)) + ", ";
             }
-            Logger::WriteLine("Gomory cut coefficients: " + cutStr);
+            Logger::writeLine("Gomory cut coefficients: " + cutStr);
         }
 
         return result;
@@ -281,7 +281,7 @@ public:
 
         if (isConsoleOutput)
         {
-            Logger::WriteLine("\nAnalyzing fractional parts:");
+            Logger::writeLine("\nAnalyzing fractional parts:");
         }
 
         for (size_t i = 1; i < tableau.size(); ++i)
@@ -292,7 +292,7 @@ public:
 
             if (isConsoleOutput)
             {
-                Logger::WriteLine("Row " + std::to_string(i) + ": RHS = " +
+                Logger::writeLine("Row " + std::to_string(i) + ": RHS = " +
                                   std::to_string(roundValue(rhsValue)) + ", fractional part = " +
                                   std::to_string(roundValue(fractionalPart)) + ", score = " +
                                   std::to_string(roundValue(fractionalScore)));
@@ -331,13 +331,13 @@ public:
                                     std::to_string(roundValue(std::get<2>(c))) + ", frac=" +
                                     std::to_string(roundValue(std::get<1>(c))) + "), ";
                 }
-                Logger::WriteLine("Candidates with score " + std::to_string(roundValue(bestFractionalScore)) + ": " + candidateStr);
+                Logger::writeLine("Candidates with score " + std::to_string(roundValue(bestFractionalScore)) + ": " + candidateStr);
             }
         }
 
         if (isConsoleOutput)
         {
-            Logger::WriteLine("Selected row " + std::to_string(selectedRow));
+            Logger::writeLine("Selected row " + std::to_string(selectedRow));
         }
 
         return selectedRow;
@@ -387,7 +387,7 @@ public:
 
     void PrintBasicVars(const std::vector<std::vector<double>> &tableau)
     {
-        Logger::WriteLine("\n=== BASIC VARIABLE VALUES (Decision Variables Only) ===");
+        Logger::writeLine("\n=== BASIC VARIABLE VALUES (Decision Variables Only) ===");
         std::vector<int> basicVarColumns;
 
         for (size_t col = 0; col < objFunc.size(); ++col)
@@ -427,10 +427,10 @@ public:
             {
                 double rhsValue = cleanValue(tableau[basicRow].back());
                 std::string varName = "x" + std::to_string(col + 1);
-                Logger::WriteLine(varName + " = " + std::to_string(roundValue(rhsValue)));
+                Logger::writeLine(varName + " = " + std::to_string(roundValue(rhsValue)));
             }
         }
-        Logger::WriteLine("");
+        Logger::writeLine("");
     }
 
     std::vector<std::vector<double>> doCuttingPlane(std::vector<std::vector<double>> workingTableau)
@@ -440,7 +440,7 @@ public:
 
         while (hasFractionalSolution(currentTableau) && iteration <= maxIterations)
         {
-            Logger::WriteLine("\n=== CUTTING PLANE ITERATION " + std::to_string(iteration) + " ===");
+            Logger::writeLine("\n=== CUTTING PLANE ITERATION " + std::to_string(iteration) + " ===");
             currentTableau = cleanTableau(currentTableau);
             int pickedRow = findMostFractionalRow(currentTableau);
 
@@ -449,7 +449,7 @@ public:
             {
                 rowStr += std::to_string(roundValue(x)) + ", ";
             }
-            Logger::WriteLine("Selected row " + std::to_string(pickedRow) + " for Gomory cut: " + rowStr);
+            Logger::writeLine("Selected row " + std::to_string(pickedRow) + " for Gomory cut: " + rowStr);
 
             std::vector<double> tempList(currentTableau[pickedRow].begin() + objFunc.size(), currentTableau[pickedRow].end());
             auto newCon = gomoryCut(tempList, true);
@@ -469,9 +469,9 @@ public:
             {
                 conStr += std::to_string(roundValue(x)) + ", ";
             }
-            Logger::WriteLine("Generated cutting plane constraint: " + conStr);
+            Logger::writeLine("Generated cutting plane constraint: " + conStr);
 
-            Logger::WriteLine("Adding new slack variable column...\n");
+            Logger::writeLine("Adding new slack variable column...\n");
             for (auto &row : currentTableau)
             {
                 row.insert(row.end() - 1, 0);
@@ -495,23 +495,23 @@ public:
 
         if (iteration >= maxIterations)
         {
-            Logger::WriteLine("\nsomething is very wrong");
+            Logger::writeLine("\nsomething is very wrong");
         }
 
         if (!hasFractionalSolution(currentTableau))
         {
-            Logger::WriteLine("\n=== OPTIMAL INTEGER SOLUTION FOUND ===");
-            Logger::WriteLine("Solution achieved after " + std::to_string(iteration - 1) + " cutting plane iterations");
+            Logger::writeLine("\n=== OPTIMAL INTEGER SOLUTION FOUND ===");
+            Logger::writeLine("Solution achieved after " + std::to_string(iteration - 1) + " cutting plane iterations");
         }
         else
         {
-            Logger::WriteLine("\n=== MAXIMUM ITERATIONS REACHED ===");
-            Logger::WriteLine("Stopped after " + std::to_string(maxIterations) + " iterations");
+            Logger::writeLine("\n=== MAXIMUM ITERATIONS REACHED ===");
+            Logger::writeLine("Stopped after " + std::to_string(maxIterations) + " iterations");
         }
 
         printTableau(currentTableau, "Final Optimal Tableau");
         double optimalSolution = currentTableau[0].back();
-        Logger::WriteLine("Optimal Solution: " + std::to_string(roundValue(optimalSolution)));
+        Logger::writeLine("Optimal Solution: " + std::to_string(roundValue(optimalSolution)));
         PrintBasicVars(currentTableau);
 
         return currentTableau;

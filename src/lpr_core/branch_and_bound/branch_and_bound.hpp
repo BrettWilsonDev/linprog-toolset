@@ -1,3 +1,4 @@
+
 #pragma once
 
 #include <vector>
@@ -9,18 +10,21 @@
 #include <iomanip>
 #include <optional>
 #include <numeric>
+#include <memory>
+#include <sstream>
+#include <fstream>
 
 #include "dual_simplex.hpp"
 
 class Logger
 {
 public:
-    static void WriteLine(const std::string &message)
+    static void writeLine(const std::string &message)
     {
         std::cout << message << std::endl;
     }
 
-    static void Write(const std::string &message)
+    static void write(const std::string &message)
     {
         std::cout << message;
     }
@@ -33,10 +37,28 @@ enum class VariableSignType
     Unrestricted
 };
 
+struct TreeNode
+{
+    std::string name;
+    std::optional<double> objective;
+    std::vector<double> solution;
+    bool isInteger = false;
+    bool infeasible = false;
+    bool pruned = false;
+    std::vector<std::string> constraintsPath;
+    std::vector<std::unique_ptr<TreeNode>> children;
+    std::string unfixedTabStr = "";
+    std::string fixedTabStr = "";
+    std::string finalTableauStr = "";
+    std::vector<std::string> intermediateTableausStr = {};
+    std::vector<int> pivotCols = {};
+    std::vector<int> pivotRows = {};
+};
+
 class BranchAndBound
 {
 private:
-    bool isConsoleOutput;
+    bool isConsoleOutput = false;
     int precision = 4;
     double tolerance = 1e-6;
 
@@ -57,6 +79,48 @@ private:
     std::vector<std::vector<double>> bestSolutionTableau;
     std::vector<std::vector<std::vector<double>>> displayTableausMin;
 
+    std::string escapeJson(const std::string &s) const
+    {
+        std::ostringstream o;
+        for (auto c = s.cbegin(); c != s.cend(); c++)
+        {
+            switch (*c)
+            {
+            case '"':
+                o << "\\\"";
+                break;
+            case '\\':
+                o << "\\\\";
+                break;
+            case '\b':
+                o << "\\b";
+                break;
+            case '\f':
+                o << "\\f";
+                break;
+            case '\n':
+                o << "\\n";
+                break;
+            case '\r':
+                o << "\\r";
+                break;
+            case '\t':
+                o << "\\t";
+                break;
+            default:
+                if ('\x00' <= *c && *c <= '\x1f')
+                {
+                    o << "\\u" << std::hex << std::setw(4) << std::setfill('0') << (int)*c;
+                }
+                else
+                {
+                    o << *c;
+                }
+            }
+        }
+        return o.str();
+    }
+
 public:
     BranchAndBound(bool isConsoleOutput = false) : isConsoleOutput(isConsoleOutput)
     {
@@ -66,7 +130,7 @@ public:
                               : -std::numeric_limits<double>::infinity();
     }
 
-    double RoundValue(double value)
+    double roundValue(double value)
     {
         try
         {
@@ -78,24 +142,7 @@ public:
         }
     }
 
-// double RoundValue(double value)
-// {
-//     try
-//     {
-//         double multiplier = std::pow(10.0, precision);
-//         double roundedValue = std::round(value * multiplier);
-//         if (std::fmod(roundedValue, 2) == 0.5) {
-//             roundedValue = std::floor(roundedValue / 2) * 2;
-//         }
-//         return roundedValue / multiplier;
-//     }
-//     catch (...)
-//     {
-//         return value;
-//     }
-// }
-
-    std::vector<std::vector<double>> RoundMatrix(const std::vector<std::vector<double>> &matrix)
+    std::vector<std::vector<double>> roundMatrix(const std::vector<std::vector<double>> &matrix)
     {
         if (matrix.empty())
             return matrix;
@@ -106,14 +153,14 @@ public:
             std::vector<double> roundedRow;
             for (const auto &val : row)
             {
-                roundedRow.push_back(RoundValue(val));
+                roundedRow.push_back(roundValue(val));
             }
             result.push_back(roundedRow);
         }
         return result;
     }
 
-    std::vector<double> RoundArray(const std::vector<double> &array)
+    std::vector<double> roundArray(const std::vector<double> &array)
     {
         if (array.empty())
             return array;
@@ -121,12 +168,12 @@ public:
         std::vector<double> result;
         for (const auto &val : array)
         {
-            result.push_back(RoundValue(val));
+            result.push_back(roundValue(val));
         }
         return result;
     }
 
-    std::vector<std::vector<std::vector<double>>> RoundTableaus(
+    std::vector<std::vector<std::vector<double>>> roundTableaus(
         const std::vector<std::vector<std::vector<double>>> &tableaus)
     {
         if (tableaus.empty())
@@ -135,20 +182,21 @@ public:
         std::vector<std::vector<std::vector<double>>> roundedTableaus;
         for (const auto &tableau : tableaus)
         {
-            roundedTableaus.push_back(RoundMatrix(tableau));
+            roundedTableaus.push_back(roundMatrix(tableau));
         }
         return roundedTableaus;
     }
 
-    bool IsIntegerValue(double value)
+    bool isIntegerValue(double value)
     {
-        double roundedVal = RoundValue(value);
+        double roundedVal = roundValue(value);
         return std::abs(roundedVal - std::round(roundedVal)) <= tolerance;
     }
 
-    void PrintTableau(const std::vector<std::vector<double>> &tableau,
-                      const std::string &title = "Tableau")
+    std::string getTableauString(const std::vector<std::vector<double>> &tableau,
+                                 const std::string &title = "Tableau")
     {
+        std::ostringstream oss;
         std::vector<std::string> tempHeaderStr;
         for (size_t i = 0; i < objFunc.size(); ++i)
         {
@@ -160,31 +208,36 @@ public:
         }
         tempHeaderStr.push_back("rhs");
 
+        oss << "\n" + title << std::endl;
+        for (const auto &header : tempHeaderStr)
+        {
+            oss << std::setw(8) << header << "  ";
+        }
+        oss << std::endl;
+
+        for (const auto &row : tableau)
+        {
+            for (const auto &val : row)
+            {
+                oss << std::setw(8) << std::fixed << std::setprecision(4) << std::to_string(roundValue(val)) << "  ";
+            }
+            oss << std::endl;
+        }
+        oss << std::endl;
+
+        return oss.str();
+    }
+
+    void printTableau(const std::vector<std::vector<double>> &tableau,
+                      const std::string &title = "Tableau")
+    {
         if (isConsoleOutput)
         {
-            Logger::WriteLine("\n" + title);
-            for (const auto &header : tempHeaderStr)
-            {
-                // Logger::Write(std::setw(8) + header + "  ");
-                std::cout << std::setw(8) << header << "  ";
-            }
-            Logger::WriteLine("");
-
-            for (const auto &row : tableau)
-            {
-                for (const auto &val : row)
-                {
-                    // Logger::Write(std::setw(8) << std::fixed << std::setprecision(4) <<
-                    //              std::to_string(RoundValue(val)) << "  ");
-                    std::cout << std::setw(8) << std::fixed << std::setprecision(4) << std::to_string(RoundValue(val)) << "  ";
-                }
-                Logger::WriteLine("");
-            }
-            Logger::WriteLine("");
+            std::cout << getTableauString(tableau, title);
         }
     }
 
-    std::vector<int> GetBasicVarSpots(const std::vector<std::vector<std::vector<double>>> &tableaus)
+    std::vector<int> getBasicVarSpots(const std::vector<std::vector<std::vector<double>>> &tableaus)
     {
         std::vector<int> basicVarSpots;
         const auto &lastTableau = tableaus[tableaus.size() - 1];
@@ -194,10 +247,10 @@ public:
             std::vector<double> tCVars;
             for (size_t i = 0; i < lastTableau.size(); ++i)
             {
-                tCVars.push_back(RoundValue(lastTableau[i][k]));
+                tCVars.push_back(roundValue(lastTableau[i][k]));
             }
 
-            double sumVals = RoundValue(std::accumulate(tCVars.begin(), tCVars.end(), 0.0));
+            double sumVals = roundValue(std::accumulate(tCVars.begin(), tCVars.end(), 0.0));
             if (std::abs(sumVals - 1.0) <= tolerance)
             {
                 basicVarSpots.push_back(k);
@@ -212,7 +265,7 @@ public:
                 std::vector<double> tLst;
                 for (size_t j = 0; j < lastTableau.size(); ++j)
                 {
-                    tLst.push_back(RoundValue(lastTableau[j][i]));
+                    tLst.push_back(roundValue(lastTableau[j][i]));
                 }
                 basicVarCols.push_back(tLst);
             }
@@ -244,21 +297,21 @@ public:
     }
 
     std::pair<std::vector<std::vector<double>>, std::vector<std::vector<double>>>
-    DoAddConstraint(const std::vector<std::vector<double>> &addedConstraints,
-                    const std::vector<std::vector<double>> &overRideTab = {})
+    doAddConstraint(const std::vector<std::vector<double>> &addedConstraints,
+                    const std::vector<std::vector<double>> &overrideTab = {})
     {
         std::vector<std::vector<double>> changingTable;
         std::vector<int> basicVarSpots;
 
-        if (!overRideTab.empty())
+        if (!overrideTab.empty())
         {
-            changingTable = overRideTab;
-            changingTable = RoundMatrix(changingTable);
-            basicVarSpots = GetBasicVarSpots({changingTable});
+            changingTable = overrideTab;
+            changingTable = roundMatrix(changingTable);
+            basicVarSpots = getBasicVarSpots({changingTable});
         }
         else
         {
-            Logger::WriteLine("needs an input table");
+            Logger::writeLine("needs an input table");
             return {{}, {}};
         }
 
@@ -274,17 +327,17 @@ public:
             std::vector<double> newCon(newTab[0].size(), 0.0);
             for (size_t i = 0; i < addedConstraints[k].size() - 2; ++i)
             {
-                newCon[i] = RoundValue(addedConstraints[k][i]);
+                newCon[i] = roundValue(addedConstraints[k][i]);
             }
-            newCon[newCon.size() - 1] = RoundValue(addedConstraints[k][addedConstraints[k].size() - 2]);
+            newCon[newCon.size() - 1] = roundValue(addedConstraints[k][addedConstraints[k].size() - 2]);
             int slackSpot = (newCon.size() - addedConstraints.size()) - 1 + k;
             newCon[slackSpot] = addedConstraints[k][addedConstraints[k].size() - 1] == 1 ? -1.0 : 1.0;
 
             newTab.push_back(newCon);
         }
 
-        newTab = RoundMatrix(newTab);
-        PrintTableau(newTab, "unfixed tab");
+        newTab = roundMatrix(newTab);
+        printTableau(newTab, "unfixed tab");
 
         auto displayTab = newTab;
 
@@ -294,14 +347,14 @@ public:
 
             for (int colIndex : basicVarSpots)
             {
-                double coefficientInNewRow = RoundValue(displayTab[constraintRowIndex][colIndex]);
+                double coefficientInNewRow = roundValue(displayTab[constraintRowIndex][colIndex]);
 
                 if (std::abs(coefficientInNewRow) > tolerance)
                 {
                     std::optional<size_t> pivotRow;
                     for (size_t rowIndex = 0; rowIndex < displayTab.size() - addedConstraints.size(); ++rowIndex)
                     {
-                        if (std::abs(RoundValue(displayTab[rowIndex][colIndex]) - 1.0) <= tolerance)
+                        if (std::abs(roundValue(displayTab[rowIndex][colIndex]) - 1.0) <= tolerance)
                         {
                             pivotRow = rowIndex;
                             break;
@@ -313,25 +366,25 @@ public:
                         bool autoReverse = addedConstraints[k][addedConstraints[k].size() - 1] == 1;
                         for (size_t col = 0; col < displayTab[0].size(); ++col)
                         {
-                            double pivotVal = RoundValue(displayTab[*pivotRow][col]);
-                            double constraintVal = RoundValue(displayTab[constraintRowIndex][col]);
+                            double pivotVal = roundValue(displayTab[*pivotRow][col]);
+                            double constraintVal = roundValue(displayTab[constraintRowIndex][col]);
                             double newVal = autoReverse ? pivotVal - coefficientInNewRow * constraintVal
                                                         : constraintVal - coefficientInNewRow * pivotVal;
-                            displayTab[constraintRowIndex][col] = RoundValue(newVal);
+                            displayTab[constraintRowIndex][col] = roundValue(newVal);
                         }
                     }
                 }
             }
         }
 
-        displayTab = RoundMatrix(displayTab);
-        PrintTableau(displayTab, "fixed tab");
+        displayTab = roundMatrix(displayTab);
+        printTableau(displayTab, "fixed tab");
 
         return {displayTab, newTab};
     }
 
     std::pair<std::optional<int>, std::optional<double>>
-    TestIfBasicVarIsInt(const std::vector<std::vector<std::vector<double>>> &tabs)
+    testIfBasicVarIsInt(const std::vector<std::vector<std::vector<double>>> &tabs)
     {
         std::vector<double> decisionVars;
         const auto &lastTableau = tabs[tabs.size() - 1];
@@ -341,10 +394,10 @@ public:
             bool found = false;
             for (size_t j = 0; j < lastTableau.size(); ++j)
             {
-                double val = RoundValue(lastTableau[j][i]);
+                double val = roundValue(lastTableau[j][i]);
                 if (std::abs(val - 1.0) <= tolerance)
                 {
-                    decisionVars.push_back(RoundValue(lastTableau[j][lastTableau[j].size() - 1]));
+                    decisionVars.push_back(roundValue(lastTableau[j][lastTableau[j].size() - 1]));
                     found = true;
                     break;
                 }
@@ -361,7 +414,7 @@ public:
 
         for (size_t i = 0; i < decisionVars.size(); ++i)
         {
-            if (!IsIntegerValue(decisionVars[i]))
+            if (!isIntegerValue(decisionVars[i]))
             {
                 double fractionalPart = decisionVars[i] - std::floor(decisionVars[i]);
                 double distanceToHalf = std::abs(fractionalPart - 0.5);
@@ -374,17 +427,14 @@ public:
             }
         }
 
-        // return bestXSpot == -1 ? std::make_pair(std::nullopt, std::nullopt)
-        //                       : std::make_pair(bestXSpot, bestRhsVal);
-
         return bestXSpot == -1 ? std::make_pair(std::optional<int>(std::nullopt), std::optional<double>(std::nullopt))
                                : std::make_pair(bestXSpot, bestRhsVal);
     }
 
     std::pair<std::vector<double>, std::vector<double>>
-    MakeBranch(const std::vector<std::vector<std::vector<double>>> &tabs)
+    makeBranch(const std::vector<std::vector<std::vector<double>>> &tabs)
     {
-        auto [xSpot, rhsVal] = TestIfBasicVarIsInt(tabs);
+        auto [xSpot, rhsVal] = testIfBasicVarIsInt(tabs);
         if (!xSpot || !rhsVal)
         {
             return {{}, {}};
@@ -392,8 +442,8 @@ public:
 
         if (isConsoleOutput)
         {
-            Logger::WriteLine("Branching on x" + std::to_string(*xSpot + 1) +
-                              " = " + std::to_string(RoundValue(*rhsVal)));
+            Logger::writeLine("Branching on x" + std::to_string(*xSpot + 1) +
+                              " = " + std::to_string(roundValue(*rhsVal)));
         }
 
         int maxInt = std::ceil(*rhsVal);
@@ -412,14 +462,14 @@ public:
         return {newConMin, newConMax};
     }
 
-    std::optional<double> GetObjectiveValue(const std::vector<std::vector<std::vector<double>>> &tabs)
+    std::optional<double> getObjectiveValue(const std::vector<std::vector<std::vector<double>>> &tabs)
     {
         if (tabs.empty())
             return std::nullopt;
-        return RoundValue(tabs[tabs.size() - 1][0][tabs[tabs.size() - 1][0].size() - 1]);
+        return roundValue(tabs[tabs.size() - 1][0][tabs[tabs.size() - 1][0].size() - 1]);
     }
 
-    std::vector<double> GetCurrentSolution(const std::vector<std::vector<std::vector<double>>> &tabs)
+    std::vector<double> getCurrentSolution(const std::vector<std::vector<std::vector<double>>> &tabs)
     {
         std::vector<double> solution(objFunc.size(), 0.0);
         const auto &lastTableau = tabs[tabs.size() - 1];
@@ -428,10 +478,10 @@ public:
         {
             for (size_t j = 0; j < lastTableau.size(); ++j)
             {
-                double val = RoundValue(lastTableau[j][i]);
+                double val = roundValue(lastTableau[j][i]);
                 if (std::abs(val - 1.0) <= tolerance)
                 {
-                    solution[i] = RoundValue(lastTableau[j][lastTableau[j].size() - 1]);
+                    solution[i] = roundValue(lastTableau[j][lastTableau[j].size() - 1]);
                     break;
                 }
             }
@@ -439,11 +489,11 @@ public:
         return solution;
     }
 
-    bool IsIntegerSolution(const std::vector<double> &solution)
+    bool isIntegerSolution(const std::vector<double> &solution)
     {
         for (double val : solution)
         {
-            if (!IsIntegerValue(val))
+            if (!isIntegerValue(val))
             {
                 return false;
             }
@@ -451,16 +501,16 @@ public:
         return true;
     }
 
-    bool UpdateBestSolution(const std::vector<std::vector<std::vector<double>>> &tabs,
+    bool updateBestSolution(const std::vector<std::vector<std::vector<double>>> &tabs,
                             const std::string &nodeLabel = "")
     {
-        auto objVal = GetObjectiveValue(tabs);
-        auto solution = GetCurrentSolution(tabs);
+        auto objVal = getObjectiveValue(tabs);
+        auto solution = getCurrentSolution(tabs);
 
         if (!objVal)
             return false;
 
-        if (IsIntegerSolution(solution))
+        if (isIntegerSolution(solution))
         {
             allSolutions.push_back({solution, *objVal});
 
@@ -483,7 +533,7 @@ public:
                             solStr += ", ";
                     }
                     solStr += "]";
-                    Logger::WriteLine("New best integer solution Candidate found: " +
+                    Logger::writeLine("New best integer solution Candidate found: " +
                                       solStr + " with objective " + std::to_string(*objVal));
                 }
                 return true;
@@ -498,7 +548,7 @@ public:
                         solStr += ", ";
                 }
                 solStr += "]";
-                Logger::WriteLine("Integer solution Candidate found: " + solStr +
+                Logger::writeLine("Integer solution Candidate found: " + solStr +
                                   " with objective " + std::to_string(*objVal) +
                                   " (not better than current best)");
             }
@@ -506,12 +556,12 @@ public:
         return false;
     }
 
-    bool ShouldPrune(const std::vector<std::vector<std::vector<double>>> &tabs)
+    bool shouldPrune(const std::vector<std::vector<std::vector<double>>> &tabs)
     {
         if (!enablePruning)
             return false;
 
-        auto objVal = GetObjectiveValue(tabs);
+        auto objVal = getObjectiveValue(tabs);
         if (!objVal)
             return true;
 
@@ -522,21 +572,91 @@ public:
         return false;
     }
 
+    std::string toJson(const TreeNode *node) const
+    {
+        std::string json = "{";
+        json += "\"name\":\"" + node->name + "\",";
+        json += "\"objective\":" + (node->objective.has_value() ? std::to_string((node->objective.value())) : "null") + ",";
+        json += "\"solution\":";
+        if (node->solution.empty() && node->infeasible)
+        {
+            json += "null,";
+        }
+        else
+        {
+            json += "[";
+            for (size_t i = 0; i < node->solution.size(); ++i)
+            {
+                json += std::to_string((node->solution[i]));
+                if (i < node->solution.size() - 1)
+                    json += ",";
+            }
+            json += "],";
+        }
+        json += "\"isInteger\":" + std::string(node->isInteger ? "true" : "false") + ",";
+        json += "\"infeasible\":" + std::string(node->infeasible ? "true" : "false") + ",";
+        json += "\"pruned\":" + std::string(node->pruned ? "true" : "false") + ",";
+        json += "\"constraintsPath\":[";
+        for (size_t i = 0; i < node->constraintsPath.size(); ++i)
+        {
+            if (i > 0)
+                json += ",";
+            json += "\"" + escapeJson(node->constraintsPath[i]) + "\"";
+        }
+        json += "],";
+        json += "\"unfixedTab\":\"" + escapeJson(node->unfixedTabStr) + "\",";
+        json += "\"fixedTab\":\"" + escapeJson(node->fixedTabStr) + "\",";
+        json += "\"finalTableau\":\"" + escapeJson(node->finalTableauStr) + "\",";
+        json += "\"intermediateTableaus\":[";
+        for (size_t i = 0; i < node->intermediateTableausStr.size(); ++i)
+        {
+            if (i > 0)
+                json += ",";
+            json += "\"" + escapeJson(node->intermediateTableausStr[i]) + "\"";
+        }
+        json += "],";
+        json += "\"pivotCols\":[";
+        for (size_t i = 0; i < node->pivotCols.size(); ++i)
+        {
+            if (i > 0)
+                json += ",";
+            json += std::to_string(node->pivotCols[i]);
+        }
+        json += "],";
+        json += "\"pivotRows\":[";
+        for (size_t i = 0; i < node->pivotRows.size(); ++i)
+        {
+            if (i > 0)
+                json += ",";
+            json += std::to_string(node->pivotRows[i]);
+        }
+        json += "],";
+        json += "\"children\":[";
+        for (size_t i = 0; i < node->children.size(); ++i)
+        {
+            if (i > 0)
+                json += ",";
+            json += toJson(node->children[i].get());
+        }
+        json += "]";
+        json += "}";
+        return json;
+    }
+
     std::pair<std::vector<double>, double>
-    DoBranchAndBound(std::vector<std::vector<std::vector<double>>> initialTabs,
-                     bool enablePruning = false)
+    doBranchAndBound(std::vector<std::vector<std::vector<double>>> initialTabs, bool enablePruning = false, const std::vector<int> &initialPivotCols = {}, const std::vector<int> &initialPivotRows = {})
     {
         this->enablePruning = enablePruning;
 
         if (isConsoleOutput)
         {
-            Logger::WriteLine("Starting Branch and Bound Algorithm");
-            Logger::WriteLine(enablePruning ? "Pruning: ENABLED (standard branch and bound)"
+            Logger::writeLine("Starting Branch and Bound Algorithm");
+            Logger::writeLine(enablePruning ? "Pruning: ENABLED (standard branch and bound)"
                                             : "Pruning: DISABLED (complete tree exploration)");
-            Logger::WriteLine(std::string(50, '='));
+            Logger::writeLine(std::string(50, '='));
         }
 
-        initialTabs = RoundTableaus(initialTabs);
+        initialTabs = roundTableaus(initialTabs);
         bestSolution.clear();
         bestObjective = isMin ? std::numeric_limits<double>::infinity()
                               : -std::numeric_limits<double>::infinity();
@@ -550,10 +670,24 @@ public:
             std::string nodeLabel;
             std::vector<std::string> constraintsPath;
             std::string parentLabel;
+            TreeNode *treeNode;
         };
 
+        auto root = std::make_unique<TreeNode>();
+        root->name = "0";
+        root->constraintsPath = {};
+        root->infeasible = false;
+        root->pruned = false;
+        root->finalTableauStr = getTableauString(initialTabs.back(), "Initial tableau solved");
+        for (size_t i = 0; i < initialTabs.size() - 1; ++i)
+        {
+            root->intermediateTableausStr.push_back(getTableauString(initialTabs[i], "Initial Tableau " + std::to_string(i + 1)));
+        }
+        root->pivotCols = initialPivotCols;
+        root->pivotRows = initialPivotRows;
+
         std::stack<Node> nodeStack;
-        nodeStack.push({initialTabs, 0, "0", {}, ""});
+        nodeStack.push({initialTabs, 0, "0", {}, "", root.get()});
         std::map<std::string, int> childCounters;
 
         int ctr = 0;
@@ -561,48 +695,58 @@ public:
         {
             if (++ctr > 100)
             {
-                Logger::WriteLine("Something is very wrong unless you need more than 100 nodes");
+                Logger::writeLine("Something is very wrong unless you need more than 100 nodes");
                 break;
             }
 
-            auto [currentTabs, depth, nodeLabel, constraintsPath, parentLabel] = nodeStack.top();
+            auto current = nodeStack.top();
             nodeStack.pop();
             nodeCounter++;
 
-            currentTabs = RoundTableaus(currentTabs);
+            auto currentTreeNode = current.treeNode;
+
+            current.tabs = roundTableaus(current.tabs);
 
             if (isConsoleOutput)
             {
-                Logger::WriteLine("\n--- Processing Node " + nodeLabel + " (Depth " +
-                                  std::to_string(depth) + ") ---");
-                if (!parentLabel.empty())
+                Logger::writeLine("\n--- Processing Node " + current.nodeLabel + " (Depth " +
+                                  std::to_string(current.depth) + ") ---");
+                if (!current.parentLabel.empty())
                 {
-                    Logger::WriteLine("Parent: " + parentLabel);
+                    Logger::writeLine("Parent: " + current.parentLabel);
                 }
-                Logger::WriteLine("Constraints path: [" +
-                                  (constraintsPath.empty() ? "" : std::accumulate(constraintsPath.begin() + 1, constraintsPath.end(), constraintsPath[0], [](const auto &a, const auto &b)
-                                                                                  { return a + ", " + b; })) +
+                Logger::writeLine("Constraints path: [" +
+                                  (current.constraintsPath.empty() ? "" : std::accumulate(current.constraintsPath.begin() + 1, current.constraintsPath.end(), current.constraintsPath[0], [](const auto &a, const auto &b)
+                                                                                          { return a + ", " + b; })) +
                                   "]");
             }
 
-            if (ShouldPrune(currentTabs))
+            auto sol = getCurrentSolution(current.tabs);
+            auto obj = getObjectiveValue(current.tabs);
+            currentTreeNode->solution = sol;
+            currentTreeNode->objective = obj;
+            bool isIntSol = isIntegerSolution(sol);
+            currentTreeNode->isInteger = isIntSol;
+
+            if (shouldPrune(current.tabs))
             {
+                currentTreeNode->pruned = true;
                 if (isConsoleOutput)
                 {
-                    Logger::WriteLine("Node " + nodeLabel + " pruned by bound");
+                    Logger::writeLine("Node " + current.nodeLabel + " pruned by bound");
                 }
                 continue;
             }
 
-            UpdateBestSolution(currentTabs, nodeLabel);
+            updateBestSolution(current.tabs, current.nodeLabel);
 
-            auto [newConMin, newConMax] = MakeBranch(currentTabs);
+            auto [newConMin, newConMax] = makeBranch(current.tabs);
             if (newConMin.empty() && newConMax.empty())
             {
                 if (isConsoleOutput)
                 {
-                    auto solution = GetCurrentSolution(currentTabs);
-                    auto objVal = GetObjectiveValue(currentTabs);
+                    auto solution = getCurrentSolution(current.tabs);
+                    auto objVal = getObjectiveValue(current.tabs);
                     std::string solStr = "[";
                     for (size_t i = 0; i < solution.size(); ++i)
                     {
@@ -611,176 +755,242 @@ public:
                             solStr += ", ";
                     }
                     solStr += "]";
-                    Logger::WriteLine("Node " + nodeLabel + ": Integer solution " +
+                    Logger::writeLine("Node " + current.nodeLabel + ": Integer solution " +
                                       solStr + " with objective " +
                                       (objVal ? std::to_string(*objVal) : "null"));
                 }
                 continue;
             }
 
-            if (childCounters.find(nodeLabel) == childCounters.end())
+            if (childCounters.find(current.nodeLabel) == childCounters.end())
             {
-                childCounters[nodeLabel] = 0;
+                childCounters[current.nodeLabel] = 0;
             }
 
+            std::vector<std::unique_ptr<TreeNode>> newChildren;
             std::vector<Node> childNodes;
 
+            auto [xSpot, rhsVal] = testIfBasicVarIsInt(current.tabs);
+
+            // MIN branch
             try
             {
-                childCounters[nodeLabel]++;
-                std::string childLabel = nodeLabel == "0" ? "1" : nodeLabel + "." + std::to_string(childCounters[nodeLabel]);
+                childCounters[current.nodeLabel]++;
+                std::string childLabel = current.nodeLabel == "0" ? "1" : current.nodeLabel + "." + std::to_string(childCounters[current.nodeLabel]);
 
                 if (isConsoleOutput)
                 {
-                    Logger::Write("\nTrying MIN branch (Node " + childLabel + "): [" +
-                                  std::to_string(newConMin[0]));
-                    for (size_t i = 1; i < newConMin.size(); ++i)
+                    Logger::write("\nTrying MIN branch (Node " + childLabel + "): [");
+                    for (size_t i = 0; i < newConMin.size(); ++i)
                     {
-                        Logger::Write(", " + std::to_string(newConMin[i]));
+                        if (i > 0)
+                            Logger::write(", ");
+                        Logger::write(std::to_string(newConMin[i]));
                     }
-                    Logger::Write("] ");
+                    Logger::write("] ");
                     for (size_t i = 0; i < newConMin.size() - 2; ++i)
                     {
                         if (newConMin[i] == 0.0)
                             continue;
-                        Logger::Write((newConMin[i] == 1.0 ? "" : std::to_string(newConMin[i]) + "*") +
+                        Logger::write((newConMin[i] == 1.0 ? "" : std::to_string(newConMin[i]) + "*") +
                                       "x" + std::to_string(i + 1) + " ");
                     }
-                    Logger::Write(newConMin[newConMin.size() - 1] == 0 ? "<= " : ">= ");
-                    Logger::Write(std::to_string(newConMin[newConMin.size() - 2]) + " ");
+                    Logger::write(newConMin[newConMin.size() - 1] == 0 ? "<= " : ">= ");
+                    Logger::writeLine(std::to_string(newConMin[newConMin.size() - 2]));
                 }
 
-                auto [displayTabMin, newTabMin] = DoAddConstraint({newConMin}, currentTabs[currentTabs.size() - 1]);
+                auto [displayTabMin, newTabMin] = doAddConstraint({newConMin}, current.tabs[current.tabs.size() - 1]);
                 auto [newTableausMin, changingVarsMin, optimalSolutionMin, pivotColsMin, pivotRowsMin, headerRowMin] =
                     dual.DoDualSimplex({}, {}, isMin, &displayTabMin);
 
-                if (std::isnan(optimalSolutionMin))
-                {
-                    PrintTableau(newTableausMin[0], "Node " + childLabel + ": Infeasible tableau");
-                    newTableausMin.clear();
-                }
-
-                if (!(std::isnan(optimalSolutionMin)))
+                bool minInfeasible = std::isnan(optimalSolutionMin);
+                if (minInfeasible)
                 {
                     if (!newTableausMin.empty())
                     {
-                        newTableausMin = RoundTableaus(newTableausMin);
-                        std::string constraintDesc = "x" +
-                                                     std::to_string(std::distance(newConMin.begin(),
-                                                                                  std::find(newConMin.begin(),
-                                                                                            newConMin.end() - 2, 1.0)) +
-                                                                    1) +
-                                                     " <= " + std::to_string(newConMin[newConMin.size() - 2]);
-                        auto newConstraintsPath = constraintsPath;
-                        newConstraintsPath.push_back(constraintDesc);
-                        childNodes.push_back({newTableausMin, depth + 1, childLabel,
-                                              newConstraintsPath, nodeLabel});
+                        printTableau(newTableausMin[0], "Node " + childLabel + ": Infeasible tableau");
                     }
-                    else if (isConsoleOutput)
+                    newTableausMin.clear();
+                }
+
+                auto childMin = std::make_unique<TreeNode>();
+                childMin->name = childLabel;
+                std::string constraintDesc = "x" + std::to_string(*xSpot + 1) + " <= " + std::to_string(static_cast<int>(std::floor(*rhsVal)));
+                auto newConstraintsPath = current.constraintsPath;
+                newConstraintsPath.push_back(constraintDesc);
+                childMin->constraintsPath = newConstraintsPath;
+                childMin->pruned = false;
+                childMin->unfixedTabStr = getTableauString(newTabMin, "unfixed tab");
+                childMin->fixedTabStr = getTableauString(displayTabMin, "fixed tab");
+                childMin->pivotCols = pivotColsMin;
+                childMin->pivotRows = pivotRowsMin;
+
+                if (newTableausMin.empty())
+                {
+                    childMin->infeasible = true;
+                    childMin->isInteger = false;
+                    childMin->objective = std::nullopt;
+                    childMin->solution = {};
+                    if (isConsoleOutput)
+                        Logger::writeLine("MIN branch (Node " + childLabel + ") infeasible");
+                }
+                else
+                {
+                    childMin->infeasible = false;
+                    newTableausMin = roundTableaus(newTableausMin);
+                    auto childSol = getCurrentSolution(newTableausMin);
+                    auto childObj = getObjectiveValue(newTableausMin);
+                    childMin->solution = childSol;
+                    childMin->objective = childObj;
+                    childMin->isInteger = isIntegerSolution(childSol);
+                }
+
+                if (!newTableausMin.empty())
+                {
+                    if (minInfeasible && !newTableausMin.empty())
                     {
-                        Logger::WriteLine("MIN branch (Node " + childLabel + ") infeasible");
+                        childMin->finalTableauStr = getTableauString(newTableausMin[0], "Node " + childLabel + ": Infeasible tableau");
+                    }
+                    else
+                    {
+                        for (size_t i = 0; i < newTableausMin.size() - 1; ++i)
+                        {
+                            std::string title = "Node " + childLabel + " MIN branch Tableau " + std::to_string(i + 1);
+                            printTableau(newTableausMin[i], title);
+                            childMin->intermediateTableausStr.push_back(getTableauString(newTableausMin[i], title));
+                            displayTableausMin.push_back(newTableausMin[i]);
+                        }
+                        std::string finalTitle = "Node " + childLabel + " MIN branch final tableau";
+                        printTableau(newTableausMin[newTableausMin.size() - 1], finalTitle);
+                        childMin->finalTableauStr = getTableauString(newTableausMin[newTableausMin.size() - 1], finalTitle);
+                        displayTableausMin.push_back(newTableausMin[newTableausMin.size() - 1]);
                     }
                 }
 
-                if (isConsoleOutput && !newTableausMin.empty())
+                newChildren.push_back(std::move(childMin));
+                if (!newTableausMin.empty())
                 {
-                    for (size_t i = 0; i < newTableausMin.size() - 1; ++i)
-                    {
-                        PrintTableau(newTableausMin[i], "Node " + childLabel +
-                                                            " MIN branch Tableau " + std::to_string(i + 1));
-                        displayTableausMin.push_back(newTableausMin[i]);
-                    }
-                    PrintTableau(newTableausMin[newTableausMin.size() - 1],
-                                 "Node " + childLabel + " MIN branch final tableau");
-                    displayTableausMin.push_back(newTableausMin[newTableausMin.size() - 1]);
+                    childNodes.push_back({newTableausMin, current.depth + 1, childLabel, newChildren.back()->constraintsPath, current.nodeLabel, newChildren.back().get()});
                 }
             }
             catch (const std::exception &e)
             {
                 if (isConsoleOutput)
                 {
-                    Logger::WriteLine("MIN branch (Node " +
-                                      std::to_string(childCounters[nodeLabel]) +
-                                      ") failed: " + e.what());
+                    Logger::writeLine("MIN branch failed: " + std::string(e.what()));
                 }
             }
 
+            // MAX branch
             try
             {
-                childCounters[nodeLabel]++;
-                std::string childLabel = nodeLabel == "0" ? "2" : nodeLabel + "." + std::to_string(childCounters[nodeLabel]);
+                childCounters[current.nodeLabel]++;
+                std::string childLabel = current.nodeLabel == "0" ? "2" : current.nodeLabel + "." + std::to_string(childCounters[current.nodeLabel]);
 
                 if (isConsoleOutput)
                 {
-                    Logger::Write("\nTrying MAX branch (Node " + childLabel + "): [" +
-                                  std::to_string(newConMax[0]));
-                    for (size_t i = 1; i < newConMax.size(); ++i)
+                    Logger::write("\nTrying MAX branch (Node " + childLabel + "): [");
+                    for (size_t i = 0; i < newConMax.size(); ++i)
                     {
-                        Logger::Write(", " + std::to_string(newConMax[i]));
+                        if (i > 0)
+                            Logger::write(", ");
+                        Logger::write(std::to_string(newConMax[i]));
                     }
-                    Logger::Write("] ");
+                    Logger::write("] ");
                     for (size_t i = 0; i < newConMax.size() - 2; ++i)
                     {
                         if (newConMax[i] == 0.0)
                             continue;
-                        Logger::Write((newConMax[i] == 1.0 ? "" : std::to_string(newConMax[i]) + "*") +
+                        Logger::write((newConMax[i] == 1.0 ? "" : std::to_string(newConMax[i]) + "*") +
                                       "x" + std::to_string(i + 1) + " ");
                     }
-                    Logger::Write(newConMax[newConMax.size() - 1] == 0 ? "<= " : ">= ");
-                    Logger::Write(std::to_string(newConMax[newConMax.size() - 2]) + " ");
+                    Logger::write(newConMax[newConMax.size() - 1] == 0 ? "<= " : ">= ");
+                    Logger::writeLine(std::to_string(newConMax[newConMax.size() - 2]));
                 }
 
-                auto [displayTabMax, newTabMax] = DoAddConstraint({newConMax}, currentTabs[currentTabs.size() - 1]);
+                auto [displayTabMax, newTabMax] = doAddConstraint({newConMax}, current.tabs[current.tabs.size() - 1]);
                 auto [newTableausMax, changingVarsMax, optimalSolutionMax, pivotColsMax, pivotRowsMax, headerRowMax] =
                     dual.DoDualSimplex({}, {}, isMin, &displayTabMax);
 
-                if (std::isnan(optimalSolutionMax))
-                {
-                    PrintTableau(newTableausMax[0], "Node " + childLabel + ": Infeasible tableau");
-                    newTableausMax.clear();
-                }
-
-                if (!(std::isnan(optimalSolutionMax)))
+                bool maxInfeasible = std::isnan(optimalSolutionMax);
+                if (maxInfeasible)
                 {
                     if (!newTableausMax.empty())
                     {
-                        newTableausMax = RoundTableaus(newTableausMax);
-                        std::string constraintDesc = "x" +
-                                                     std::to_string(std::distance(newConMax.begin(),
-                                                                                  std::find(newConMax.begin(),
-                                                                                            newConMax.end() - 2, 1.0)) +
-                                                                    1) +
-                                                     " >= " + std::to_string(newConMax[newConMax.size() - 2]);
-                        auto newConstraintsPath = constraintsPath;
-                        newConstraintsPath.push_back(constraintDesc);
-                        childNodes.push_back({newTableausMax, depth + 1, childLabel,
-                                              newConstraintsPath, nodeLabel});
+                        printTableau(newTableausMax[0], "Node " + childLabel + ": Infeasible tableau");
                     }
-                    else if (isConsoleOutput)
+                    newTableausMax.clear();
+                }
+
+                auto childMax = std::make_unique<TreeNode>();
+                childMax->name = childLabel;
+                std::string constraintDesc = "x" + std::to_string(*xSpot + 1) + " >= " + std::to_string(static_cast<int>(std::ceil(*rhsVal)));
+                auto newConstraintsPath = current.constraintsPath;
+                newConstraintsPath.push_back(constraintDesc);
+                childMax->constraintsPath = newConstraintsPath;
+                childMax->pruned = false;
+                childMax->unfixedTabStr = getTableauString(newTabMax, "unfixed tab");
+                childMax->fixedTabStr = getTableauString(displayTabMax, "fixed tab");
+                childMax->pivotCols = pivotColsMax;
+                childMax->pivotRows = pivotRowsMax;
+
+                if (newTableausMax.empty())
+                {
+                    childMax->infeasible = true;
+                    childMax->isInteger = false;
+                    childMax->objective = std::nullopt;
+                    childMax->solution = {};
+                    if (isConsoleOutput)
+                        Logger::writeLine("MAX branch (Node " + childLabel + ") infeasible");
+                }
+                else
+                {
+                    childMax->infeasible = false;
+                    newTableausMax = roundTableaus(newTableausMax);
+                    auto childSol = getCurrentSolution(newTableausMax);
+                    auto childObj = getObjectiveValue(newTableausMax);
+                    childMax->solution = childSol;
+                    childMax->objective = childObj;
+                    childMax->isInteger = isIntegerSolution(childSol);
+                }
+
+                if (!newTableausMax.empty())
+                {
+                    if (maxInfeasible && !newTableausMax.empty())
                     {
-                        Logger::WriteLine("MAX branch (Node " + childLabel + ") infeasible");
+                        childMax->finalTableauStr = getTableauString(newTableausMax[0], "Node " + childLabel + ": Infeasible tableau");
+                    }
+                    else
+                    {
+                        for (size_t i = 0; i < newTableausMax.size() - 1; ++i)
+                        {
+                            std::string title = "Node " + childLabel + " MAX branch Tableau " + std::to_string(i + 1);
+                            printTableau(newTableausMax[i], title);
+                            childMax->intermediateTableausStr.push_back(getTableauString(newTableausMax[i], title));
+                        }
+                        std::string finalTitle = "Node " + childLabel + " MAX branch final tableau";
+                        printTableau(newTableausMax[newTableausMax.size() - 1], finalTitle);
+                        childMax->finalTableauStr = getTableauString(newTableausMax[newTableausMax.size() - 1], finalTitle);
                     }
                 }
 
-                if (isConsoleOutput && !newTableausMax.empty())
+                newChildren.push_back(std::move(childMax));
+                if (!newTableausMax.empty())
                 {
-                    for (size_t i = 0; i < newTableausMax.size() - 1; ++i)
-                    {
-                        PrintTableau(newTableausMax[i], "Node " + childLabel +
-                                                            " MAX branch Tableau " + std::to_string(i + 1));
-                    }
-                    PrintTableau(newTableausMax[newTableausMax.size() - 1],
-                                 "Node " + childLabel + " MAX branch final tableau");
+                    childNodes.push_back({newTableausMax, current.depth + 1, childLabel, newChildren.back()->constraintsPath, current.nodeLabel, newChildren.back().get()});
                 }
             }
             catch (const std::exception &e)
             {
                 if (isConsoleOutput)
                 {
-                    Logger::WriteLine("MAX branch (Node " +
-                                      std::to_string(childCounters[nodeLabel]) +
-                                      ") failed: " + e.what());
+                    Logger::writeLine("MAX branch failed: " + std::string(e.what()));
                 }
+            }
+
+            for (auto &ch : newChildren)
+            {
+                currentTreeNode->children.push_back(std::move(ch));
             }
 
             for (auto it = childNodes.rbegin(); it != childNodes.rend(); ++it)
@@ -791,14 +1001,14 @@ public:
 
         if (isConsoleOutput)
         {
-            Logger::WriteLine("\n" + std::string(50, '='));
-            Logger::WriteLine("BRANCH AND BOUND COMPLETED");
-            Logger::WriteLine(std::string(50, '='));
+            Logger::writeLine("\n" + std::string(50, '='));
+            Logger::writeLine("BRANCH AND BOUND COMPLETED");
+            Logger::writeLine(std::string(50, '='));
             if (!bestSolution.empty())
             {
-                PrintTableau(bestSolutionTableau, "Best Candidate solution tableau at node " +
+                printTableau(bestSolutionTableau, "Best Candidate solution tableau at node " +
                                                       bestSolutionNodeNum);
-                Logger::WriteLine("Node of best solution: " + bestSolutionNodeNum);
+                Logger::writeLine("Node of best solution: " + bestSolutionNodeNum);
                 std::string solStr = "[";
                 for (size_t i = 0; i < bestSolution.size(); ++i)
                 {
@@ -807,20 +1017,20 @@ public:
                         solStr += ", ";
                 }
                 solStr += "]";
-                Logger::WriteLine("Best integer solution: " + solStr);
-                Logger::WriteLine("Best objective value: " + std::to_string(bestObjective));
-                Logger::WriteLine("Best solution:");
-                PrintBasicVars(bestSolutionTableau);
+                Logger::writeLine("Best integer solution: " + solStr);
+                Logger::writeLine("Best objective value: " + std::to_string(bestObjective));
+                Logger::writeLine("Best solution:");
+                printBasicVars(bestSolutionTableau);
             }
             else
             {
-                Logger::WriteLine("No integer solution found");
+                Logger::writeLine("No integer solution found");
             }
-            Logger::WriteLine("Total nodes processed: " + std::to_string(nodeCounter));
+            Logger::writeLine("Total nodes processed: " + std::to_string(nodeCounter));
 
             if (!allSolutions.empty())
             {
-                Logger::WriteLine("\nAll integer solutions found (" +
+                Logger::writeLine("\nAll integer solutions found (" +
                                   std::to_string(allSolutions.size()) + "):");
                 for (size_t i = 0; i < allSolutions.size(); ++i)
                 {
@@ -832,18 +1042,47 @@ public:
                             solStr += ", ";
                     }
                     solStr += "]";
-                    Logger::WriteLine("  " + std::to_string(i + 1) + ". Solution: " +
+                    Logger::writeLine("  " + std::to_string(i + 1) + ". Solution: " +
                                       solStr + ", Objective: " +
                                       std::to_string(allSolutions[i].second));
                 }
             }
         }
 
+        this->solution += "\n" + std::string(50, '=');
+        this->solution += "\nBRANCH AND BOUND COMPLETED";
+        this->solution += "\n" + std::string(50, '=');
+
+        if (!bestSolution.empty())
+        {
+            this->solution += "\nNode of best solution: " + bestSolutionNodeNum;
+            std::string solStr = "[";
+            
+            for (size_t i = 0; i < bestSolution.size(); ++i)
+            {
+                solStr += std::to_string(bestSolution[i]);
+                if (i < bestSolution.size() - 1)
+                    solStr += ", ";
+            }
+            solStr += "]";
+
+            this->solution += "\nBest integer solution: " + solStr;
+            this->solution += "\nBest objective value: " + std::to_string(bestObjective);
+        }
+        else
+        {
+            this->solution += "\nNo integer solution found";
+        }
+
+        this->solution += "\nTotal nodes processed: " + std::to_string(nodeCounter);
+
+        this->jsonOut = toJson(root.get());
+
         return {bestSolution, bestObjective};
     }
 
     std::pair<std::vector<double>, std::vector<std::vector<double>>>
-    SetUpProblem(std::vector<double> objFunc,
+    setUpProblem(std::vector<double> objFunc,
                  std::vector<std::vector<double>> constraints)
     {
         int numConstraints = objFunc.size();
@@ -861,92 +1100,90 @@ public:
         return {objFunc, constraints};
     }
 
-    void PrintBasicVars(const std::vector<std::vector<double>> &tableau)
+    void printBasicVars(const std::vector<std::vector<double>> &tableau)
     {
-        Logger::WriteLine("\n=== BASIC VARIABLE VALUES (Decision Variables Only) ===");
-
-        std::vector<int> basicVarColumns;
-        for (size_t col = 0; col < objFunc.size(); ++col)
+        if (isConsoleOutput)
         {
-            std::vector<double> column;
-            for (size_t row = 1; row < tableau.size(); ++row)
-            {
-                column.push_back(tableau[row][col]);
-            }
+            Logger::writeLine("\n=== BASIC VARIABLE VALUES (Decision Variables Only) ===");
 
-            int onesCount = std::count_if(column.begin(), column.end(),
-                                          [this](double x)
-                                          { return std::abs(x - 1.0) < tolerance; });
-            int zerosCount = std::count_if(column.begin(), column.end(),
-                                           [this](double x)
-                                           { return std::abs(x) < tolerance; });
-
-            if (onesCount == 1 && zerosCount == column.size() - 1)
+            std::vector<int> basicVarColumns;
+            for (size_t col = 0; col < objFunc.size(); ++col)
             {
-                basicVarColumns.push_back(col);
-            }
-        }
-
-        for (int col : basicVarColumns)
-        {
-            int basicRow = -1;
-            for (size_t row = 1; row < tableau.size(); ++row)
-            {
-                if (std::abs(tableau[row][col] - 1.0) < tolerance)
+                std::vector<double> column;
+                for (size_t row = 1; row < tableau.size(); ++row)
                 {
-                    basicRow = row;
-                    break;
+                    column.push_back(tableau[row][col]);
+                }
+
+                int onesCount = std::count_if(column.begin(), column.end(),
+                                              [this](double x)
+                                              { return std::abs(x - 1.0) < tolerance; });
+                int zerosCount = std::count_if(column.begin(), column.end(),
+                                               [this](double x)
+                                               { return std::abs(x) < tolerance; });
+
+                if (onesCount == 1 && zerosCount == column.size() - 1)
+                {
+                    basicVarColumns.push_back(col);
                 }
             }
 
-            if (basicRow != -1)
+            for (int col : basicVarColumns)
             {
-                double rhsValue = tableau[basicRow][tableau[basicRow].size() - 1];
-                Logger::WriteLine("x" + std::to_string(col + 1) + " = " +
-                                  std::to_string(rhsValue));
+                int basicRow = -1;
+                for (size_t row = 1; row < tableau.size(); ++row)
+                {
+                    if (std::abs(tableau[row][col] - 1.0) < tolerance)
+                    {
+                        basicRow = row;
+                        break;
+                    }
+                }
+
+                if (basicRow != -1)
+                {
+                    double rhsValue = tableau[basicRow][tableau[basicRow].size() - 1];
+                    Logger::writeLine("x" + std::to_string(col + 1) + " = " +
+                                      std::to_string(rhsValue));
+                }
             }
+            Logger::writeLine("");
         }
-        Logger::WriteLine("");
     }
 
-    void RunBranchAndBound(const std::vector<double> &objFuncPassed,
-                           const std::vector<std::vector<double>> &constraintsPassed,
-                           bool isMin)
+    void
+    RunBranchAndBound(const std::vector<double> &objFuncPassed, const std::vector<std::vector<double>> &constraintsPassed, bool isMin)
     {
-        std::cout << "running" << std::endl;
+        // std::cout << "running" << std::endl;
         bool enablePruning = false;
 
         try
         {
             objFunc = objFuncPassed;
             constraints = constraintsPassed;
-            // std::tie(objFunc, constraints) = SetUpProblem(objFunc, constraints);
 
             auto a = objFunc;
             auto b = constraints;
-
-            // Note: CanonicalFormBuilder is not implemented in this conversion
-            // You would need to implement the equivalent functionality
 
             try
             {
                 auto [newTableaus, changingVars, optimalSolution, pivotCols, pivotRows, headerRow] =
                     dual.DoDualSimplex(a, b, isMin);
 
-                this->newTableaus = RoundTableaus(newTableaus);
+                this->newTableaus = roundTableaus(newTableaus);
 
                 if (isConsoleOutput)
                 {
-                    Logger::WriteLine("Initial LP relaxation solved");
+                    Logger::writeLine("Initial LP relaxation solved");
                     for (size_t i = 0; i < this->newTableaus.size() - 1; ++i)
                     {
-                        PrintTableau(this->newTableaus[i], "Initial Tableau " +
-                                                               std::to_string(i + 1));
+                        std::string title = "Initial Tableau " + std::to_string(i + 1);
+                        printTableau(this->newTableaus[i], title);
                     }
-                    PrintTableau(this->newTableaus[this->newTableaus.size() - 1],
+                    printTableau(this->newTableaus[this->newTableaus.size() - 1],
                                  "Initial tableau solved");
-                    auto solution = GetCurrentSolution(this->newTableaus);
-                    auto objVal = GetObjectiveValue(this->newTableaus);
+                    auto solution = getCurrentSolution(this->newTableaus);
+                    auto objVal = getObjectiveValue(this->newTableaus);
                     std::string solStr = "[";
                     for (size_t i = 0; i < solution.size(); ++i)
                     {
@@ -955,31 +1192,41 @@ public:
                             solStr += ", ";
                     }
                     solStr += "]";
-                    Logger::WriteLine("Initial solution: " + solStr);
-                    Logger::WriteLine("Initial objective: " +
+                    Logger::writeLine("Initial solution: " + solStr);
+                    Logger::writeLine("Initial objective: " +
                                       (objVal ? std::to_string(*objVal) : "null"));
                 }
 
-                DoBranchAndBound(this->newTableaus, enablePruning);
+                doBranchAndBound(this->newTableaus, enablePruning, pivotCols, pivotRows);
             }
             catch (const std::exception &e)
             {
                 if (isConsoleOutput)
                 {
-                    Logger::WriteLine("Error in dual simplex: " + std::string(e.what()));
+                    Logger::writeLine("Error in dual simplex: " + std::string(e.what()));
                 }
                 throw;
             }
         }
         catch (const std::exception &e)
         {
-            Logger::WriteLine("math error: " + std::string(e.what()));
+            Logger::writeLine("math error: " + std::string(e.what()));
             throw;
         }
     }
 
+    std::string getJSON() const
+    {
+        return this->jsonOut;
+    }
+
+    std::string getSolutionStr() const
+    {
+        return this->solution;
+    }
+
 private:
-    std::vector<std::vector<double>> DeepCopy(const std::vector<std::vector<double>> &original)
+    std::vector<std::vector<double>> deepCopy(const std::vector<std::vector<double>> &original)
     {
         if (original.empty())
             return {};
@@ -990,4 +1237,7 @@ private:
         }
         return copy;
     }
+
+    std::string jsonOut = "{}";
+    std::string solution;
 };

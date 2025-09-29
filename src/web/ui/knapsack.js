@@ -53,11 +53,6 @@ export async function render(formContainer, resultsContainer, Module) {
 
     <h1>Branch and Bound Knapsack</h1>
 
-    <div>
-      <label><input type="radio" name="problemType" value="Max" checked> Max</label>
-      <label><input type="radio" name="problemType" value="Min"> Min</label>
-    </div>
-
     <p id="problemTypeText">Problem is: Max</p>
 
     <div class="row">
@@ -83,18 +78,12 @@ export async function render(formContainer, resultsContainer, Module) {
 
 
     // ===== STATE =====
-    let problemType = "Max";
     let amtOfObjVars = 2;
     let amtOfConstraints = 1;
     let objFunc = [0.0, 0.0];
     let constraints = [[0.0, 0.0, 0.0, 0.0]];
     let signItems = ["<="];
     let signItemsChoices = [0];
-
-    function updateProblemType() {
-        problemType = document.querySelector('input[name="problemType"]:checked').value;
-        document.getElementById("problemTypeText").innerText = "Problem is: " + problemType;
-    }
 
     function updateObjectiveFunction() {
         const objFuncContainer = document.getElementById("objectiveFunction");
@@ -188,12 +177,7 @@ export async function render(formContainer, resultsContainer, Module) {
         }
     };
 
-    function resetRadios() {
-        document.querySelector('input[value="Max"]').checked = true;
-    }
-
     document.getElementById("resetButton").onclick = () => {
-        problemType = "Max";
         amtOfObjVars = 2;
         amtOfConstraints = 1;
         objFunc = [0.0, 0.0];
@@ -207,7 +191,6 @@ export async function render(formContainer, resultsContainer, Module) {
 
         updateObjectiveFunction();
         updateConstraints();
-        resetRadios();
     };
 
     function fmt(num, decimals = 6) {
@@ -326,7 +309,6 @@ export async function render(formContainer, resultsContainer, Module) {
                     .on("mouseout", () => tooltip.style("display", "none"));
             }
 
-
             resultsContainer.innerHTML = "";
             const preElement = document.createElement("pre");
             preElement.textContent = result.ranking + " \n\n" + result.solution;
@@ -341,11 +323,6 @@ export async function render(formContainer, resultsContainer, Module) {
     // ===== INITIAL RENDER =====
     updateObjectiveFunction();
     updateConstraints();
-    updateProblemType();
-
-
-
-
 }
 
 
