@@ -1115,6 +1115,42 @@ emscripten::val runCuttingPlane(emscripten::val objFunc, emscripten::val jsConst
     return jsResult;
 }
 
+emscripten::val runCheapestInsertion(emscripten::val jsDistanceMatrix, emscripten::val jsStartCity)
+{
+    // Convert 2D array -> std::vector<std::vector<double>>
+    std::vector<std::vector<double>> distanceMatrix;
+    if (!jsDistanceMatrix.isUndefined() && !jsDistanceMatrix.isNull())
+    {
+        unsigned rows = jsDistanceMatrix["length"].as<unsigned>();
+        distanceMatrix.reserve(rows);
+        for (unsigned r = 0; r < rows; ++r)
+        {
+            emscripten::val row = jsDistanceMatrix[r];
+            unsigned cols = row["length"].as<unsigned>();
+            std::vector<double> rowVec;
+            rowVec.reserve(cols);
+            for (unsigned c = 0; c < cols; ++c)
+            {
+                rowVec.push_back(row[c].as<double>());
+            }
+            distanceMatrix.push_back(rowVec);
+        }
+    }
+
+    int startCity = jsStartCity.as<int>();
+    // int startCity = -1;
+
+    CheapestInsertion cheapestInsertion(verbose);
+
+    cheapestInsertion.runCheapestInsertion(distanceMatrix, startCity);
+
+    emscripten::val jsResult = emscripten::val::object();
+
+    jsResult.set("solution", emscripten::val(cheapestInsertion.getCollectedOutput()));
+
+    return jsResult;
+}
+
 // Bindings
 EMSCRIPTEN_BINDINGS(simplex_module)
 {
@@ -1133,7 +1169,7 @@ EMSCRIPTEN_BINDINGS(simplex_module)
     emscripten::function("runKnapsack", &runKnapsack);
     emscripten::function("runBranchAndBound", &runBranchAndBound);
     emscripten::function("runCuttingPlane", &runCuttingPlane);
-    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
+    emscripten::function("runCheapestInsertion", &runCheapestInsertion);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);

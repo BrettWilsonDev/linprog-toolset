@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <numeric>
+#include <sstream>
 
 #include "dual_simplex.hpp"
 

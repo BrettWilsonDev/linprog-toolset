@@ -27,6 +27,7 @@ private:
     std::vector<std::vector<double>> distanceMatrix;
     size_t numCities;
     std::map<int, std::string> cities;
+    std::ostringstream oss; // To collect output
 
 public:
     CheapestInsertionTSP() = default;
@@ -36,21 +37,25 @@ public:
         : distanceMatrix(distMatrix)
     {
         numCities = distanceMatrix.size();
-
-        // Auto-generate city names: City 1, City 2, ...
         for (size_t i = 0; i < numCities; ++i)
         {
             cities[i + 1] = "City " + std::to_string(i + 1);
         }
     }
 
+    // Get collected output
+    std::string getCollectedOutput() const
+    {
+        return oss.str();
+    }
+
     // Print TSP formulation
-    void printFormulation(const std::vector<std::vector<double>> &distMatrix) const
+    void printFormulation(const std::vector<std::vector<double>> &distMatrix)
     {
         size_t n = distMatrix.size();
 
         // Objective function
-        std::cout << "Objective function:\n";
+        oss << "Objective function:\n";
         std::vector<std::string> terms;
 
         for (size_t i = 0; i < n; ++i)
@@ -66,17 +71,19 @@ public:
             }
         }
 
-        std::cout << "min z = ";
+        oss << "min z = ";
         for (size_t i = 0; i < terms.size(); ++i)
         {
+            if (i > 0 && (i % 10 == 0))
+                oss << "\n";
             if (i > 0)
-                std::cout << " + ";
-            std::cout << terms[i];
+                oss << " + ";
+            oss << terms[i];
         }
-        std::cout << "\n\n";
+        oss << "\n\n";
 
         // Arriving once in a city constraints
-        std::cout << "Arriving once in a city constraints:\n";
+        oss << "Arriving once in a city constraints:\n";
 
         // Each city is entered exactly once
         for (size_t j = 0; j < n; ++j)
@@ -95,10 +102,10 @@ public:
             for (size_t i = 0; i < constraintTerms.size(); ++i)
             {
                 if (i > 0)
-                    std::cout << " + ";
-                std::cout << constraintTerms[i];
+                    oss << " + ";
+                oss << constraintTerms[i];
             }
-            std::cout << " = 1\n";
+            oss << " = 1\n";
         }
 
         // Each city is left exactly once
@@ -118,23 +125,23 @@ public:
             for (size_t i = 0; i < constraintTerms.size(); ++i)
             {
                 if (i > 0)
-                    std::cout << " + ";
-                std::cout << constraintTerms[i];
+                    oss << " + ";
+                oss << constraintTerms[i];
             }
-            std::cout << " = 1\n";
+            oss << " = 1\n";
         }
-        std::cout << "\n";
+        oss << "\n";
 
         // Sub-tour elimination constraints (MTZ)
-        std::cout << "Sub-tour constraints:\n";
+        oss << "Sub-tour constraints:\n";
         for (size_t i = 1; i < n; ++i)
         { // Ui for cities 2..n
             for (size_t j = 1; j < n; ++j)
             {
                 if (i != j)
                 {
-                    std::cout << "U" << (i + 1) << " - U" << (j + 1) << " + "
-                              << n << "x" << (i + 1) << (j + 1) << " <= " << (n - 1) << "\n";
+                    oss << "U" << (i + 1) << " - U" << (j + 1) << " + "
+                        << n << "x" << (i + 1) << (j + 1) << " <= " << (n - 1) << "\n";
                 }
             }
         }
@@ -154,7 +161,6 @@ public:
         if (startCity != -1)
         {
             c1 = startCity;
-            // Pick the closest remaining city
             std::vector<std::pair<int, double>> distances;
             for (int i = 1; i <= static_cast<int>(numCities); ++i)
             {
@@ -174,7 +180,6 @@ public:
         }
         else
         {
-            // Fully general: find the closest pair of cities
             double minDist = std::numeric_limits<double>::infinity();
             c1 = c2 = -1;
 
@@ -193,8 +198,8 @@ public:
             }
         }
 
-        std::cout << "Initial route chosen: " << cities.at(c1) << " => " << cities.at(c2)
-                  << " with distance " << getDistance(c1, c2) << "\n";
+        oss << "Initial route chosen: " << cities.at(c1) << " => " << cities.at(c2)
+            << " with distance " << std::fixed << std::setprecision(0) << getDistance(c1, c2) << "\n";
 
         return {c1, c2};
     }
@@ -232,13 +237,12 @@ public:
                 double detourCost = newDist1 + newDist2 - currentDist;
 
                 std::ostringstream routePart, detourPart, calcPart;
-                routePart << "x" << currentFrom << currentTo << " " << currentDist;
+                routePart << "x" << currentFrom << currentTo << " " << std::fixed << std::setprecision(0) << currentDist;
                 detourPart << "x" << currentFrom << newCity << " x" << newCity << currentTo
-                           << " " << newDist1 << " " << newDist2;
-                calcPart << "= (" << newDist1 << " + " << newDist2 << ") - "
+                           << " " << std::fixed << std::setprecision(0) << newDist1 << " " << newDist2;
+                calcPart << "= (" << std::fixed << std::setprecision(0) << newDist1 << " + " << newDist2 << ") - "
                          << currentDist << " = " << detourCost;
 
-                // Insert between currentFrom and currentTo
                 std::vector<int> newRoute;
                 if (currentFrom == route[0] && currentTo == route[1])
                 {
@@ -282,10 +286,10 @@ public:
                 double detourCost = newDist1 + newDist2 - currentDist;
 
                 std::ostringstream routePart, detourPart, calcPart;
-                routePart << "x" << currentFrom << currentTo << " " << currentDist;
+                routePart << "x" << currentFrom << currentTo << " " << std::fixed << std::setprecision(0) << currentDist;
                 detourPart << "x" << currentFrom << newCity << " x" << newCity << currentTo
-                           << " " << newDist1 << " " << newDist2;
-                calcPart << "= (" << newDist1 << " + " << newDist2 << ") - "
+                           << " " << std::fixed << std::setprecision(0) << newDist1 << " " << newDist2;
+                calcPart << "= (" << std::fixed << std::setprecision(0) << newDist1 << " + " << newDist2 << ") - "
                          << currentDist << " = " << detourCost;
 
                 std::vector<int> newRoute = route;
@@ -359,15 +363,14 @@ public:
     // Main solve function
     std::pair<std::vector<int>, double> solve(int startCity = -1)
     {
-        std::cout << "\n=== Formulation ===\n\n";
+        oss << "\n=== Formulation ===\n\n";
         printFormulation(distanceMatrix);
 
-        std::cout << "\n=== Solving TSP using Cheapest Insertion Heuristic ===\n\n";
+        oss << "\n=== Solving TSP using Cheapest Insertion Heuristic ===\n\n";
 
         std::vector<int> route = findInitialRoute(startCity);
         std::vector<int> remainingCities;
 
-        // Build remaining cities list
         for (int c = 1; c <= static_cast<int>(numCities); ++c)
         {
             if (std::find(route.begin(), route.end(), c) == route.end())
@@ -376,8 +379,8 @@ public:
             }
         }
 
-        std::cout << "\nInitial route: " << formatRoute(route) << "\n";
-        std::cout << "Remaining cities: " << formatRemainingCities(remainingCities) << "\n\n";
+        oss << "\nInitial route: " << formatRoute(route) << "\n";
+        oss << "Remaining cities: " << formatRemainingCities(remainingCities) << "\n\n";
 
         while (!remainingCities.empty())
         {
@@ -392,11 +395,20 @@ public:
                 insertionOptions = getGeneralInsertionOptions(route, remainingCities);
             }
 
-            std::cout << "Route           Detour          Detour Length\n";
+            // Print table header
+            oss << std::left
+                << std::setw(20) << "Route"
+                << std::setw(35) << "Detour"
+                << std::setw(25) << "Detour Length" << "\n";
+            oss << std::string(80, '-') << "\n";
+
+            // Print insertion options
             for (const auto &option : insertionOptions)
             {
-                std::cout << option.routePart << " | " << option.detourPart
-                          << " | " << option.calcPart << "\n";
+                oss << std::left
+                    << std::setw(20) << option.routePart
+                    << std::setw(35) << option.detourPart
+                    << std::setw(25) << option.calcPart << "\n";
             }
 
             // Pick cheapest insertion
@@ -412,17 +424,17 @@ public:
                 remainingCities.end());
 
             int anchor = (std::find(route.begin(), route.end(), 1) != route.end()) ? 1 : route[0];
-            std::cout << "\nUpdated route: " << formatRoute(route, anchor) << "\n";
+            oss << "\nUpdated route: " << formatRoute(route, anchor) << "\n";
 
             if (!remainingCities.empty())
             {
-                std::cout << "\n";
+                oss << "\n";
             }
         }
 
         double totalDistance = calculateTotalDistance(route);
         int anchor = (std::find(route.begin(), route.end(), 1) != route.end()) ? 1 : route[0];
-        std::cout << "\nFinal route: " << formatRoute(route, anchor) << "\n";
+        oss << "\nFinal route: " << formatRoute(route, anchor) << "\n";
 
         // Print calculation
         std::vector<std::string> distances;
@@ -433,43 +445,43 @@ public:
             distances.push_back(dist.str());
         }
 
-        std::cout << "z = ";
+        oss << "z = ";
         for (size_t i = 0; i < distances.size(); ++i)
         {
             if (i > 0)
-                std::cout << " + ";
-            std::cout << distances[i];
+                oss << " + ";
+            oss << distances[i];
         }
-        std::cout << "\nz = " << totalDistance << "\n\n";
+        oss << "\nz = " << totalDistance << "\n\n";
 
         return {route, totalDistance};
     }
 
     // Print distance matrix
-    void printDistanceMatrix() const
+    void printDistanceMatrix()
     {
-        std::cout << "\nDistance Matrix:\n";
-        std::cout << std::string(50, '-') << "\n";
+        oss << "\nDistance Matrix:\n";
+        oss << std::string(50, '-') << "\n";
 
         // Header
-        std::cout << std::setw(8) << " ";
+        oss << std::setw(8) << " ";
         for (size_t j = 0; j < numCities; ++j)
         {
-            std::cout << std::setw(8) << ("City" + std::to_string(j + 1));
+            oss << std::setw(8) << ("City" + std::to_string(j + 1));
         }
-        std::cout << "\n";
+        oss << "\n";
 
         // Rows
         for (size_t i = 0; i < numCities; ++i)
         {
-            std::cout << std::setw(8) << ("City" + std::to_string(i + 1));
+            oss << std::setw(8) << ("City" + std::to_string(i + 1));
             for (size_t j = 0; j < numCities; ++j)
             {
-                std::cout << std::setw(8) << std::fixed << std::setprecision(0) << distanceMatrix[i][j];
+                oss << std::setw(8) << std::fixed << std::setprecision(0) << distanceMatrix[i][j];
             }
-            std::cout << "\n";
+            oss << "\n";
         }
-        std::cout << "\n";
+        oss << "\n";
     }
 
     // Getters
@@ -491,8 +503,8 @@ public:
     // Example usage function
     void runCheapestInsertionExample()
     {
-        std::cout << "CHEAPEST INSERTION TSP SOLVER - EXAMPLE\n";
-        std::cout << std::string(80, '=') << "\n";
+        oss << "CHEAPEST INSERTION TSP SOLVER - EXAMPLE\n";
+        oss << std::string(80, '=') << "\n";
 
         std::vector<std::vector<double>> distanceMatrix = {
             {0, 520, 980, 450, 633},  // City 1
@@ -510,14 +522,61 @@ public:
         // Solve with starting city 1
         auto [finalRoute, totalCost] = solver.solve(1);
 
-        std::cout << "Final Results Summary:\n";
-        std::cout << "Route: ";
+        oss << "Final Results Summary:\n";
+        oss << "Route: ";
         for (size_t i = 0; i < finalRoute.size(); ++i)
         {
             if (i > 0)
-                std::cout << " => ";
-            std::cout << finalRoute[i];
+                oss << " => ";
+            oss << finalRoute[i];
         }
-        std::cout << "\nTotal distance: " << totalCost << "\n";
+        oss << "\nTotal distance: " << std::fixed << std::setprecision(0) << totalCost << "\n";
+    }
+};
+
+class CheapestInsertion
+{
+private:
+    bool isConsoleOutput;
+    std::ostringstream oss;
+
+public:
+    CheapestInsertion(bool isConsoleOutput = false) : isConsoleOutput(isConsoleOutput) {}
+    ~CheapestInsertion() = default;
+
+    // Get collected output
+    std::string getCollectedOutput() const
+    {
+        return oss.str();
+    }
+
+    void runCheapestInsertion(std::vector<std::vector<double>> distanceMatrix, int startCity = -1)
+    {
+        oss << "CHEAPEST INSERTION TSP SOLVER\n";
+        oss << std::string(80, '=') << "\n";
+
+        CheapestInsertionTSP solver(distanceMatrix);
+
+        // Print the distance matrix
+        solver.printDistanceMatrix();
+
+        auto [finalRoute, totalCost] = solver.solve(startCity);
+
+        oss << "Final Results Summary:\n";
+        oss << "Route: ";
+        for (size_t i = 0; i < finalRoute.size(); ++i)
+        {
+            if (i > 0)
+                oss << " => ";
+            oss << finalRoute[i];
+        }
+        oss << "\nTotal distance: " << std::fixed << std::setprecision(0) << totalCost << "\n";
+
+        oss << solver.getCollectedOutput();
+
+        if (isConsoleOutput)
+        {
+            std::cout << oss.str();
+        }
     }
 };

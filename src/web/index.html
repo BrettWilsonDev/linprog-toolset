@@ -67,6 +67,7 @@
     <button onclick="loadUI('adding_activities_and_constraints')">Adding Activities And Constraints</button>
     <button onclick="loadUI('branch_and_bound')">Branch And Bound Simplex</button>
     <button onclick="loadUI('knapsack')">Branch And Bound Knapsack</button>
+    <button onclick="loadUI('cheapest_insertion_tsp')">Cheapest Insertion TSP</button>
     <button onclick="loadUI('cutting_plane')">Cutting Plane</button>
     <button onclick="loadUI('dea')">Data Envelopment Analysis</button>
     <button onclick="loadUI('dual_simplex')">Dual Simplex</button>
@@ -101,6 +102,7 @@
     import * as knapsack from "./ui/knapsack.js";
     import * as branch_and_bound from "./ui/branch_and_bound.js";
     import * as cutting_plane from "./ui/cutting_plane.js";
+    import * as cheapest_insertion_tsp from "./ui/cheapest_insertion_tsp.js";
 
     // Single global WASM module
     let Module = null;
@@ -133,6 +135,7 @@
       knapsack,
       branch_and_bound,
       cutting_plane,
+      cheapest_insertion_tsp,
     };
 
     // Global loader (called by sidebar buttons)

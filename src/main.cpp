@@ -2,21 +2,24 @@
 #include "web/web_bindings.hpp"
 #endif
 
-#include "./lpr_core/cutting_plane/cutting_plane.hpp"
+#include "./lpr_core/cheapest_insertion/cheapest_insertion_tsp.hpp"
 
 #include <iostream>
 
 int main(int argc, char *argv[])
 {
-    std::vector<double> objFunc = {13, 8};
-    std::vector<std::vector<double>> constraints = {
-        {1, 2, 10, 0},
-        {5, 2, 20, 0},
+
+    std::vector<std::vector<double>> distanceMatrix = {
+        {0, 520, 980, 450, 633},  // City 1
+        {520, 0, 204, 888, 557},  // City 2
+        {980, 204, 0, 446, 1020}, // City 3
+        {450, 888, 446, 0, 249},  // City 4
+        {633, 557, 1020, 249, 0}  // City 5
     };
 
-    CuttingPlane solver(false);
+    CheapestInsertion solver(false);
 
-    solver.RunCuttingPlane(objFunc, constraints, false);
+    solver.runCheapestInsertion(distanceMatrix);
 
     return 0;
 }
