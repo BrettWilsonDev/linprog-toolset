@@ -1,7 +1,7 @@
 export function render(formContainer, resultsContainer, Module) {
     // Insert HTML
     formContainer.innerHTML = `
-    <h1>Goal Simplex Penalties</h1>
+    <h1>Goal Simplex Preemptive</h1>
 
     <button class="btn" id="addDecisionVarBtn">Decision Variable +</button>
     <button class="btn" id="removeDecisionVarBtn">Decision Variable -</button>

@@ -488,47 +488,8 @@ public:
             }
         }
 
-        // // Logger::WriteLine("");
         PrintTableau(firstTab, "Initial Table");
-        // // Logger::WriteLine("");
-
-        // // Logger::WriteLine("Initial Table\n");
-        // for (const auto &header : headerStr)
-        // {
-        //     // Logger::Write(header + "               ");
-        // }
-        // // Logger::WriteLine("");
-        // for (size_t i = 0; i < firstTab.size(); i++)
-        // {
-        //     for (size_t j = 0; j < firstTab[i].size(); j++)
-        //     {
-        //         std::ostringstream oss;
-        //         oss << std::fixed << std::setprecision(4) << firstTab[i][j];
-        //         // Logger::Write(oss.str() + "           ");
-        //     }
-        //     // Logger::WriteLine("");
-        // }
-
-        // // Logger::WriteLine("");
         PrintTableau(revisedTab, "Optimal Changing Table");
-        // // Logger::WriteLine("");
-
-        // // Logger::WriteLine("\nOptimal Changing Table\n");
-        // for (const auto &header : headerStr)
-        // {
-        //     // Logger::Write(header + "               ");
-        // }
-        // // Logger::WriteLine("");
-        // for (size_t i = 0; i < revisedTab.size(); i++)
-        // {
-        //     for (size_t j = 0; j < revisedTab[i].size(); j++)
-        //     {
-        //         std::ostringstream oss;
-        //         oss << std::fixed << std::setprecision(4) << revisedTab[i][j];
-        //         // Logger::Write(oss.str() + "           ");
-        //     }
-        //     // Logger::WriteLine("");
-        // }
     }
 
     std::vector<double> DoAddActivity(const std::vector<double> &activity)

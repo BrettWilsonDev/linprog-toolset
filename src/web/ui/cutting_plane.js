@@ -1,7 +1,7 @@
 export function render(formContainer, resultsContainer, Module) {
     // Insert HTML
     formContainer.innerHTML = `
-    <h1>Dual Simplex</h1>
+    <h1>Cutting Plane</h1>
 
     <div>
       <label><input type="radio" name="problemType" value="Max" checked> Max</label>

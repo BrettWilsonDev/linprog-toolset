@@ -114,18 +114,7 @@ public:
 
         // primal obj
         oss << std::setw(8) << strDualMin << "  ";
-        // for (const auto &val : tObjFunc)
-        // {
-        //     if (val == tObjFunc.back())
-        //     {
-        //         oss << std::setw(8) << std::fixed << std::setprecision(3) << "[turquoise]" << val << "  ";
-        //     }
-        //     else
-        //     {
-        //         oss << std::setw(8) << std::fixed << std::setprecision(3) << "[green]" << val << "  ";
-        //     }
-        // }
-
+        
         for (size_t i = 0; i < tObjFunc.size(); i++)
         {
             if (i == tObjFunc.size() - 1)
@@ -357,13 +346,6 @@ public:
         {
             dualObjFunc.push_back(constraints[i][constraints[i].size() - 2]);
         }
-
-        // for (const auto &value : dualObjFunc)
-        // {
-        //     std::cout << value << " ";
-        // }
-        // std::cout << "\n"
-        //           << std::endl;
 
         dualConstraints = TransposeMat(constraintsLhs);
 
