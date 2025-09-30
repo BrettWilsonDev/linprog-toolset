@@ -64,19 +64,19 @@
 <body>
   <aside>
     <h2>Algorithms</h2>
+    <button onclick="loadUI('adding_activities_and_constraints')">Adding Activities And Constraints</button>
+    <button onclick="loadUI('branch_and_bound')">branch and bound</button>
+    <button onclick="loadUI('knapsack')">knapsack</button>
+    <button onclick="loadUI('dea')">Data Envelopment Analysis</button>
     <button onclick="loadUI('dual_simplex')">dual Simplex</button>
-    <button onclick="loadUI('two_phase_simplex')">Two Phase Simplex</button>
-    <button onclick="loadUI('graphical_solver')">graphical solver</button>
+    <button onclick="loadUI('duality')">duality</button>
     <button onclick="loadUI('goal_penalties_simplex')">goal penalties simplex</button>
     <button onclick="loadUI('goal_preemptive_simplex')">goal preemptive simplex</button>
+    <button onclick="loadUI('graphical_solver')">graphical solver</button>
     <button onclick="loadUI('math_preliminaries')">math preliminaries</button>
     <button onclick="loadUI('sensitivity_analysis')">sensitivity analysis</button>
-    <button onclick="loadUI('duality')">duality</button>
-    <button onclick="loadUI('dea')">Data Envelopment Analysis</button>
-    <button onclick="loadUI('adding_activities_and_constraints')">Adding Activities And Constraints</button>
-    <button onclick="loadUI('knapsack')">knapsack</button>
-    <button onclick="loadUI('branch_and_bound')">branch and bound</button>
-    <button onclick="loadUI('simplex')">Simplex</button>
+    <button onclick="loadUI('two_phase_simplex')">Two Phase Simplex</button>
+    <button onclick="loadUI('cutting_plane')">cutting plane</button>
   </aside>
 
   <main>
@@ -100,7 +100,7 @@
     import * as adding_activities_and_constraints from "./ui/adding_activities_and_constraints.js";
     import * as knapsack from "./ui/knapsack.js";
     import * as branch_and_bound from "./ui/branch_and_bound.js";
-    import * as simplex from "./ui/simplex.js";
+    import * as cutting_plane from "./ui/cutting_plane.js";
 
     // Single global WASM module
     let Module = null;
@@ -132,7 +132,7 @@
       adding_activities_and_constraints,
       knapsack,
       branch_and_bound,
-      simplex,
+      cutting_plane,
     };
 
     // Global loader (called by sidebar buttons)

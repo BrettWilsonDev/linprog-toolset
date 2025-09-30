@@ -1068,6 +1068,53 @@ emscripten::val runBranchAndBound(emscripten::val objFunc, emscripten::val jsCon
     return jsResult;
 }
 
+emscripten::val runCuttingPlane(emscripten::val objFunc, emscripten::val jsConstraints, emscripten::val jsIsMin)
+{
+    // Convert 1D array -> std::vector<double>
+    std::vector<double> objFuncDouble;
+    if (!objFunc.isUndefined() && !objFunc.isNull())
+    {
+        unsigned len = objFunc["length"].as<unsigned>();
+        objFuncDouble.reserve(len);
+        for (unsigned i = 0; i < len; ++i)
+        {
+            objFuncDouble.push_back(objFunc[i].as<double>());
+        }
+    }
+
+    // Convert 2D array -> std::vector<std::vector<double>>
+    std::vector<std::vector<double>> constraintsDouble;
+    if (!jsConstraints.isUndefined() && !jsConstraints.isNull())
+    {
+        unsigned rows = jsConstraints["length"].as<unsigned>();
+        constraintsDouble.reserve(rows);
+        for (unsigned r = 0; r < rows; ++r)
+        {
+            emscripten::val row = jsConstraints[r];
+            unsigned cols = row["length"].as<unsigned>();
+            std::vector<double> rowVec;
+            rowVec.reserve(cols);
+            for (unsigned c = 0; c < cols; ++c)
+            {
+                rowVec.push_back(row[c].as<double>());
+            }
+            constraintsDouble.push_back(rowVec);
+        }
+    }
+
+    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+
+    CuttingPlane cuttingPlane(verbose);
+
+    cuttingPlane.RunCuttingPlane(objFuncDouble, constraintsDouble, isMin);
+
+    emscripten::val jsResult = emscripten::val::object();
+
+    jsResult.set("solution", emscripten::val(cuttingPlane.getCollectedOutput()));
+
+    return jsResult;
+}
+
 // Bindings
 EMSCRIPTEN_BINDINGS(simplex_module)
 {
@@ -1085,6 +1132,10 @@ EMSCRIPTEN_BINDINGS(simplex_module)
     emscripten::function("runAddConstraints", &runAddConstraints);
     emscripten::function("runKnapsack", &runKnapsack);
     emscripten::function("runBranchAndBound", &runBranchAndBound);
+    emscripten::function("runCuttingPlane", &runCuttingPlane);
+    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
+    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
+    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
 }
