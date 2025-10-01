@@ -16,7 +16,7 @@
 #include "../lpr_core/machine_scheduling/machine_scheduling_penalty.hpp"
 #include "../lpr_core/machine_scheduling/tardiness_scheduler.hpp"
 #include "../lpr_core/hungarian_algorithm/hungarian_algorithm.hpp"
-#include "../lpr_core/nearest_neighbour/nearest_neighbour_tsp.hpp"
+#include "../lpr_core/nearest_neighbor/nearest_neighbor_tsp.hpp"
 #include "../lpr_core/cheapest_insertion/cheapest_insertion_tsp.hpp"
 #include "../lpr_core/adding_acts_cons/adding_activities_and_constraints.hpp"
 #include "../lpr_core/DEA/dea_solver.hpp"
@@ -1151,6 +1151,42 @@ emscripten::val runCheapestInsertion(emscripten::val jsDistanceMatrix, emscripte
     return jsResult;
 }
 
+emscripten::val runNearestNeighbor(emscripten::val jsDistanceMatrix, emscripten::val jsStartCity)
+{
+    // Convert 2D array -> std::vector<std::vector<double>>
+    std::vector<std::vector<double>> distanceMatrix;
+    if (!jsDistanceMatrix.isUndefined() && !jsDistanceMatrix.isNull())
+    {
+        unsigned rows = jsDistanceMatrix["length"].as<unsigned>();
+        distanceMatrix.reserve(rows);
+        for (unsigned r = 0; r < rows; ++r)
+        {
+            emscripten::val row = jsDistanceMatrix[r];
+            unsigned cols = row["length"].as<unsigned>();
+            std::vector<double> rowVec;
+            rowVec.reserve(cols);
+            for (unsigned c = 0; c < cols; ++c)
+            {
+                rowVec.push_back(row[c].as<double>());
+            }
+            distanceMatrix.push_back(rowVec);
+        }
+    }
+
+    int startCity = jsStartCity.as<int>();
+    // int startCity = -1;
+
+    NearestNeighbour nearestNeighbour(verbose);
+
+    nearestNeighbour.runNearestNeighbour(distanceMatrix, startCity);
+
+    emscripten::val jsResult = emscripten::val::object();
+
+    jsResult.set("solution", emscripten::val(nearestNeighbour.getCollectedOutput()));
+
+    return jsResult;
+}
+
 // Bindings
 EMSCRIPTEN_BINDINGS(simplex_module)
 {
@@ -1170,7 +1206,7 @@ EMSCRIPTEN_BINDINGS(simplex_module)
     emscripten::function("runBranchAndBound", &runBranchAndBound);
     emscripten::function("runCuttingPlane", &runCuttingPlane);
     emscripten::function("runCheapestInsertion", &runCheapestInsertion);
-    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
+    emscripten::function("runNearestNeighbor", &runNearestNeighbor);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);

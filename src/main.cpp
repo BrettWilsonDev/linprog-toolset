@@ -2,7 +2,7 @@
 #include "web/web_bindings.hpp"
 #endif
 
-#include "./lpr_core/cheapest_insertion/cheapest_insertion_tsp.hpp"
+#include "./lpr_core/nearest_neighbor/nearest_neighbor_tsp.hpp"
 
 #include <iostream>
 
@@ -17,9 +17,9 @@ int main(int argc, char *argv[])
         {633, 557, 1020, 249, 0}  // City 5
     };
 
-    CheapestInsertion solver(false);
+    NearestNeighbour solver(true);
 
-    solver.runCheapestInsertion(distanceMatrix);
+    solver.runNearestNeighbour(distanceMatrix, 1);
 
     return 0;
 }

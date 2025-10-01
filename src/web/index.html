@@ -68,6 +68,7 @@
     <button onclick="loadUI('branch_and_bound')">Branch And Bound Simplex</button>
     <button onclick="loadUI('knapsack')">Branch And Bound Knapsack</button>
     <button onclick="loadUI('cheapest_insertion_tsp')">Cheapest Insertion TSP</button>
+    <button onclick="loadUI('nearest_neighbor_tsp')">Nearest Neighbor TSP</button>
     <button onclick="loadUI('cutting_plane')">Cutting Plane</button>
     <button onclick="loadUI('dea')">Data Envelopment Analysis</button>
     <button onclick="loadUI('dual_simplex')">Dual Simplex</button>
@@ -103,6 +104,7 @@
     import * as branch_and_bound from "./ui/branch_and_bound.js";
     import * as cutting_plane from "./ui/cutting_plane.js";
     import * as cheapest_insertion_tsp from "./ui/cheapest_insertion_tsp.js";
+    import * as nearest_neighbor_tsp from "./ui/nearest_neighbor_tsp.js";
 
     // Single global WASM module
     let Module = null;
@@ -136,6 +138,7 @@
       branch_and_bound,
       cutting_plane,
       cheapest_insertion_tsp,
+      nearest_neighbor_tsp,
     };
 
     // Global loader (called by sidebar buttons)
