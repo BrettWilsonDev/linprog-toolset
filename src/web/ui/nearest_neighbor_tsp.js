@@ -2,9 +2,7 @@ export function render(formContainer, resultsContainer, Module) {
     // Insert HTML
     formContainer.innerHTML = `
     <h1>Nearest Neighbor Traveling Sales Person</h1>
-
-    <p id="problemTypeText">Problem is: Max</p>
-
+    
     <div class="row">
       <span>Number of Cities: <span id="numCitiesDisplay">3</span></span>
       <button id="addCity">Cities +</button>

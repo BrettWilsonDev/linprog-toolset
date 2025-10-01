@@ -2,24 +2,23 @@
 #include "web/web_bindings.hpp"
 #endif
 
-#include "./lpr_core/nearest_neighbor/nearest_neighbor_tsp.hpp"
+#include "./lpr_core/hungarian_algorithm/hungarian_algorithm.hpp"
 
 #include <iostream>
 
 int main(int argc, char *argv[])
 {
+    const double blank = -999;
+    std::vector<std::vector<double>> costMatrixWithBlanks = {
+        {22, 18, 30, 18},
+        {18, blank, 27, 22},
+        {26, 20, 28, 28},
+        {16, 22, blank, 14},
+        {21, blank, 25, 28}};
 
-    std::vector<std::vector<double>> distanceMatrix = {
-        {0, 520, 980, 450, 633},  // City 1
-        {520, 0, 204, 888, 557},  // City 2
-        {980, 204, 0, 446, 1020}, // City 3
-        {450, 888, 446, 0, 249},  // City 4
-        {633, 557, 1020, 249, 0}  // City 5
-    };
+    Hungarian solver(true);
 
-    NearestNeighbour solver(true);
-
-    solver.runNearestNeighbour(distanceMatrix, 1);
+    solver.runHungarian(costMatrixWithBlanks, false, -999, true);
 
     return 0;
 }

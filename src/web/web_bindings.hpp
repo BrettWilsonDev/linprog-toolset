@@ -1187,6 +1187,43 @@ emscripten::val runNearestNeighbor(emscripten::val jsDistanceMatrix, emscripten:
     return jsResult;
 }
 
+emscripten::val runHungarianAlgorithm(emscripten::val jsCostMatrixWithBlanks, emscripten::val jsMaximize, emscripten::val jsBlankValue, emscripten::val jsHasBlankValue)
+{
+    // Convert 2D array -> std::vector<std::vector<double>>
+    std::vector<std::vector<double>> costMatrixWithBlanks;
+    if (!jsCostMatrixWithBlanks.isUndefined() && !jsCostMatrixWithBlanks.isNull())
+    {
+        unsigned rows = jsCostMatrixWithBlanks["length"].as<unsigned>();
+        costMatrixWithBlanks.reserve(rows);
+        for (unsigned r = 0; r < rows; ++r)
+        {
+            emscripten::val row = jsCostMatrixWithBlanks[r];
+            unsigned cols = row["length"].as<unsigned>();
+            std::vector<double> rowVec;
+            rowVec.reserve(cols);
+            for (unsigned c = 0; c < cols; ++c)
+            {
+                rowVec.push_back(row[c].as<double>());
+            }
+            costMatrixWithBlanks.push_back(rowVec);
+        }
+    }
+
+    bool maximize = (!jsMaximize.isUndefined() && !jsMaximize.isNull()) ? jsMaximize.as<bool>() : false;
+    double blankValue = (!jsBlankValue.isUndefined() && !jsBlankValue.isNull()) ? jsBlankValue.as<double>() : -999.0;
+    bool hasBlankValue = (!jsHasBlankValue.isUndefined() && !jsHasBlankValue.isNull()) ? jsHasBlankValue.as<bool>() : false;
+
+    Hungarian hungarian(verbose);
+
+    hungarian.runHungarian(costMatrixWithBlanks, maximize, blankValue, hasBlankValue);
+
+    emscripten::val jsResult = emscripten::val::object();
+
+    jsResult.set("solution", emscripten::val(hungarian.getCollectedOutput()));
+
+    return jsResult;
+}
+
 // Bindings
 EMSCRIPTEN_BINDINGS(simplex_module)
 {
@@ -1207,6 +1244,8 @@ EMSCRIPTEN_BINDINGS(simplex_module)
     emscripten::function("runCuttingPlane", &runCuttingPlane);
     emscripten::function("runCheapestInsertion", &runCheapestInsertion);
     emscripten::function("runNearestNeighbor", &runNearestNeighbor);
+    emscripten::function("runHungarianAlgorithm", &runHungarianAlgorithm);
+    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);

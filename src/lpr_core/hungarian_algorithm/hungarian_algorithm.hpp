@@ -20,6 +20,7 @@ private:
     size_t nCols;
     int stepCount;
     bool dummyAdded;
+    mutable std::ostringstream oss; // To collect output
     
     static constexpr double INF = std::numeric_limits<double>::infinity();
     static constexpr double NEG_INF = -std::numeric_limits<double>::infinity();
@@ -66,34 +67,40 @@ public:
         nCols = nRows > 0 ? matrix[0].size() : 0;
     }
     
+    // Get collected output
+    std::string getCollectedOutput() const
+    {
+        return oss.str();
+    }
+
     // Print matrix utility
     void printMatrix(const std::vector<std::vector<double>>& mat, const std::string& title = "Matrix") const {
-        std::cout << "\n" << title << ":\n";
-        std::cout << std::string(50, '-') << "\n";
+        oss << "\n" << title << ":\n";
+        oss << std::string(50, '-') << "\n";
         
         for (size_t i = 0; i < mat.size(); ++i) {
-            std::cout << "Row " << i << ": [";
+            oss << "Row " << i << ": [";
             for (size_t j = 0; j < mat[i].size(); ++j) {
-                if (j > 0) std::cout << ", ";
+                if (j > 0) oss << ", ";
                 
                 if (mat[i][j] == INF) {
-                    std::cout << "   -  ";
+                    oss << "   -  ";
                 } else if (mat[i][j] == NEG_INF) {
-                    std::cout << "   -  ";
+                    oss << "   -  ";
                 } else {
-                    std::cout << std::setw(6) << std::fixed << std::setprecision(1) << mat[i][j];
+                    oss << std::setw(6) << std::fixed << std::setprecision(1) << mat[i][j];
                 }
             }
-            std::cout << "]\n";
+            oss << "]\n";
         }
-        std::cout << "\n";
+        oss << "\n";
     }
     
     // Step 1: Add dummy rows/columns if needed
     void step1AddDummy() {
         stepCount++;
-        std::cout << "STEP " << stepCount << ": Add dummy row/column if needed\n";
-        std::cout << std::string(60, '=') << "\n";
+        oss << "STEP " << stepCount << ": Add dummy row/column if needed\n";
+        oss << std::string(60, '=') << "\n";
         
         if (nRows != nCols) {
             size_t maxDim = std::max(nRows, nCols);
@@ -125,7 +132,7 @@ public:
                         newMatrix[i][j] = matrix[i][j];
                     }
                 }
-                std::cout << "Added " << (maxDim - nRows) << " dummy row(s) with val " << highval << "\n";
+                oss << "Added " << (maxDim - nRows) << " dummy row(s) with val " << highval << "\n";
                 dummyAdded = true;
             } else {
                 // Add dummy columns
@@ -134,14 +141,14 @@ public:
                         newMatrix[i][j] = matrix[i][j];
                     }
                 }
-                std::cout << "Added " << (maxDim - nCols) << " dummy column(s) with val " << highval << "\n";
+                oss << "Added " << (maxDim - nCols) << " dummy column(s) with val " << highval << "\n";
                 dummyAdded = true;
             }
             
             matrix = newMatrix;
             nRows = nCols = maxDim;
         } else {
-            std::cout << "Matrix is already square - no dummy needed\n";
+            oss << "Matrix is already square - no dummy needed\n";
         }
         
         printMatrix(matrix, "Matrix after Step 1");
@@ -150,8 +157,8 @@ public:
     // Step 2: Row reduction
     void step2RowReduction() {
         stepCount++;
-        std::cout << "STEP " << stepCount << ": Row reduction\n";
-        std::cout << std::string(60, '=') << "\n";
+        oss << "STEP " << stepCount << ": Row reduction\n";
+        oss << std::string(60, '=') << "\n";
         
         for (size_t i = 0; i < nRows; ++i) {
             double minVal = INF;
@@ -166,14 +173,14 @@ public:
             }
             
             if (hasFinite) {
-                std::cout << "Row " << i << ": minimum value = " << minVal << "\n";
+                oss << "Row " << i << ": minimum value = " << minVal << "\n";
                 for (size_t j = 0; j < nCols; ++j) {
                     if (matrix[i][j] != INF && matrix[i][j] != NEG_INF) {
                         matrix[i][j] -= minVal;
                     }
                 }
             } else {
-                std::cout << "Row " << i << ": all values are infinite - no reduction needed\n";
+                oss << "Row " << i << ": all values are infinite - no reduction needed\n";
             }
         }
         
@@ -183,8 +190,8 @@ public:
     // Step 3: Column reduction
     void step3ColumnReduction() {
         stepCount++;
-        std::cout << "STEP " << stepCount << ": Column reduction\n";
-        std::cout << std::string(60, '=') << "\n";
+        oss << "STEP " << stepCount << ": Column reduction\n";
+        oss << std::string(60, '=') << "\n";
         
         for (size_t j = 0; j < nCols; ++j) {
             double minVal = INF;
@@ -199,14 +206,14 @@ public:
             }
             
             if (hasFinite) {
-                std::cout << "Column " << j << ": minimum value = " << minVal << "\n";
+                oss << "Column " << j << ": minimum value = " << minVal << "\n";
                 for (size_t i = 0; i < nRows; ++i) {
                     if (matrix[i][j] != INF && matrix[i][j] != NEG_INF) {
                         matrix[i][j] -= minVal;
                     }
                 }
             } else {
-                std::cout << "Column " << j << ": all values are infinite - no reduction needed\n";
+                oss << "Column " << j << ": all values are infinite - no reduction needed\n";
             }
         }
         
@@ -303,8 +310,8 @@ public:
     // Step 4: Check optimality
     bool step4CheckOptimality(std::set<size_t>& lineRows, std::set<size_t>& lineCols) {
         stepCount++;
-        std::cout << "STEP " << stepCount << ": Check optimality\n";
-        std::cout << std::string(60, '=') << "\n";
+        oss << "STEP " << stepCount << ": Check optimality\n";
+        oss << std::string(60, '=') << "\n";
         
         auto lines = findMinimumLines();
         lineRows = lines.first;
@@ -312,23 +319,23 @@ public:
         
         size_t numLines = lineRows.size() + lineCols.size();
         
-        std::cout << "Lines covering all zeros:\n";
-        std::cout << "Row lines: ";
+        oss << "Lines covering all zeros:\n";
+        oss << "Row lines: ";
         for (size_t row : lineRows) {
-            std::cout << row << " ";
+            oss << row << " ";
         }
-        std::cout << "\nColumn lines: ";
+        oss << "\nColumn lines: ";
         for (size_t col : lineCols) {
-            std::cout << col << " ";
+            oss << col << " ";
         }
-        std::cout << "\nTotal lines: " << numLines << "\n";
-        std::cout << "Matrix size: " << nRows << "\n";
+        oss << "\nTotal lines: " << numLines << "\n";
+        oss << "Matrix size: " << nRows << "\n";
         
         if (numLines == nRows) {
-            std::cout << "Number of lines equals matrix size - OPTIMAL!\n";
+            oss << "Number of lines equals matrix size - OPTIMAL!\n";
             return true;
         } else {
-            std::cout << "Number of lines ≠ matrix size - NOT OPTIMAL\n";
+            oss << "Number of lines ≠ matrix size - NOT OPTIMAL\n";
             return false;
         }
     }
@@ -336,8 +343,8 @@ public:
     // Step 5: Improve solution
     void step5ImproveSolution(const std::set<size_t>& lineRows, const std::set<size_t>& lineCols) {
         stepCount++;
-        std::cout << "STEP " << stepCount << ": Improve solution\n";
-        std::cout << std::string(60, '=') << "\n";
+        oss << "STEP " << stepCount << ": Improve solution\n";
+        oss << std::string(60, '=') << "\n";
         
         // Create coverage matrix
         std::vector<std::vector<bool>> covered(nRows, std::vector<bool>(nCols, false));
@@ -364,14 +371,14 @@ public:
         }
         
         if (uncoveredValues.empty()) {
-            std::cout << "No uncovered finite values found - algorithm may not converge\n";
+            oss << "No uncovered finite values found - algorithm may not converge\n";
             return;
         }
         
         double a = *std::min_element(uncoveredValues.begin(), uncoveredValues.end());
-        std::cout << "Step 5a: Smallest uncovered value a = " << a << "\n";
-        std::cout << "Step 5b: Subtract a from uncovered elements\n";
-        std::cout << "Step 5c: Add a to doubly covered elements\n";
+        oss << "Step 5a: Smallest uncovered value a = " << a << "\n";
+        oss << "Step 5b: Subtract a from uncovered elements\n";
+        oss << "Step 5c: Add a to doubly covered elements\n";
         
         // Apply improvement
         for (size_t i = 0; i < nRows; ++i) {
@@ -468,8 +475,8 @@ public:
     // Step 6: Find final assignment
     std::pair<std::vector<std::pair<int, int>>, double> step6FindAssignment() {
         stepCount++;
-        std::cout << "STEP " << stepCount << ": Find optimal assignment\n";
-        std::cout << std::string(60, '=') << "\n";
+        oss << "STEP " << stepCount << ": Find optimal assignment\n";
+        oss << std::string(60, '=') << "\n";
         
         // Create zeros matrix
         std::vector<std::vector<bool>> zeros(nRows, std::vector<bool>(nCols, false));
@@ -481,7 +488,7 @@ public:
         
         auto assignment = findOptimalAssignment(zeros);
         
-        std::cout << "Optimal assignment (row, col):\n";
+        oss << "Optimal assignment (row, col):\n";
         double totalVal = 0.0;
         std::vector<std::pair<int, int>> validAssignments;
         
@@ -499,24 +506,24 @@ public:
                     validAssignments.push_back({row, col});
                     
                     if (hasBlankValue && val == blankValue) {
-                        std::cout << "  Assignment " << (i+1) << ": Row " << row 
+                        oss << "  Assignment " << (i+1) << ": Row " << row 
                                  << " => Column " << col << " (FORBIDDEN - blank slot!)\n";
                     } else {
-                        std::cout << "  Assignment " << (i+1) << ": Row " << row 
+                        oss << "  Assignment " << (i+1) << ": Row " << row 
                                  << " => Column " << col << " (val: " << val << ")\n";
                     }
                 } else {
-                    std::cout << "  Assignment " << (i+1) << ": Row " << row 
+                    oss << "  Assignment " << (i+1) << ": Row " << row 
                              << " => Column " << col << " (FORBIDDEN - blank slot!)\n";
                 }
             } else {
-                std::cout << "  Assignment " << (i+1) << ": Row " << row 
+                oss << "  Assignment " << (i+1) << ": Row " << row 
                          << " => Column " << col << " (dummy assignment - ignored)\n";
             }
         }
         
         std::string problemType = maximize ? "maximization" : "minimization";
-        std::cout << "\nTotal optimal val (" << problemType << "): " << totalVal << "\n";
+        oss << "\nTotal optimal val (" << problemType << "): " << totalVal << "\n";
         
         return {validAssignments, totalVal};
     }
@@ -524,13 +531,13 @@ public:
     // Main solve function
     std::pair<std::vector<std::pair<int, int>>, double> solve() {
         std::string problemType = maximize ? "MAXIMIZATION" : "MINIMIZATION";
-        std::cout << "HUNGARIAN ALGORITHM - " << problemType << " PROBLEM - STEP BY STEP SOLUTION\n";
-        std::cout << std::string(70, '=') << "\n";
+        oss << "HUNGARIAN ALGORITHM - " << problemType << " PROBLEM - STEP BY STEP SOLUTION\n";
+        oss << std::string(70, '=') << "\n";
         
         printMatrix(originalMatrix, "Original val Matrix");
         
         if (maximize) {
-            std::cout << "Converting maximization to minimization problem...\n";
+            oss << "Converting maximization to minimization problem...\n";
             printMatrix(matrix, "Converted Matrix (for minimization)");
         }
         
@@ -554,15 +561,15 @@ public:
         }
         
         if (iteration >= maxIterations) {
-            std::cout << "WARNING: Maximum iterations (" << maxIterations << ") reached!\n";
+            oss << "WARNING: Maximum iterations (" << maxIterations << ") reached!\n";
         }
         
         return step6FindAssignment();
     }
     // Example usage function
     void runExamples() {
-        std::cout << "EXAMPLE: Problem with Blank Slots (Forbidden Assignments)\n";
-        std::cout << std::string(80, '=') << "\n";
+        oss << "EXAMPLE: Problem with Blank Slots (Forbidden Assignments)\n";
+        oss << std::string(80, '=') << "\n";
         
         const double FORBIDDEN = -999;
         // std::vector<std::vector<double>> costMatrixWithBlanks = {
@@ -584,11 +591,53 @@ public:
         HungarianAlgorithm hungarian(costMatrixWithBlanks, false, FORBIDDEN, true);
         auto result = hungarian.solve();
         
-        std::cout << "\nFinal Results:\n";
-        std::cout << "Assignments: ";
+        oss << "\nFinal Results:\n";
+        oss << "Assignments: ";
         for (const auto& assignment : result.first) {
-            std::cout << "(" << assignment.first << "," << assignment.second << ") ";
+            oss << "(" << assignment.first << "," << assignment.second << ") ";
         }
-        std::cout << "\nTotal cost: " << result.second << "\n";
+        oss << "\nTotal cost: " << result.second << "\n";
+    }
+};
+
+class Hungarian
+{
+private:
+    bool isConsoleOutput;
+    std::ostringstream oss;
+
+public:
+    Hungarian(bool isConsoleOutput = false) : isConsoleOutput(isConsoleOutput) {}
+    ~Hungarian() = default;
+
+    // Get collected output
+    std::string getCollectedOutput() const
+    {
+        return oss.str();
+    }
+
+    void runHungarian(const std::vector<std::vector<double>>& valMatrix, bool maximize = false, double blankValue = 0.0, bool hasBlankValue = false)
+    {
+        oss << "HUNGARIAN ALGORITHM\n";
+        oss << std::string(80, '=') << "\n";
+
+        HungarianAlgorithm solver(valMatrix, maximize, blankValue, hasBlankValue);
+
+        auto result = solver.solve();
+
+        oss << "Final Results Summary:\n";
+        oss << "Assignments: ";
+        for (const auto& assignment : result.first)
+        {
+            oss << "(" << assignment.first << "," << assignment.second << ") ";
+        }
+        oss << "\nTotal cost: " << result.second << "\n";
+
+        oss << solver.getCollectedOutput();
+
+        if (isConsoleOutput)
+        {
+            std::cout << oss.str();
+        }
     }
 };
