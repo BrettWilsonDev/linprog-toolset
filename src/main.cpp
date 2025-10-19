@@ -2,17 +2,17 @@
 #include "web/web_bindings.hpp"
 #endif
 
-#include "./lpr_core/goldenratio_search/golden_section_search.hpp"
+#include "./lpr_core/descent_algorithm/steepest_descent.hpp"
 
 
 #include <iostream>
 
 int main(int argc, char *argv[])
 {
-    GoldenSectionSearch gss = GoldenSectionSearch();
-    gss.Test();
+    SteepestDescent steepestDescent;
+    steepestDescent.test();
 
-    std::cout << gss.getOutput();
+    std::cout << steepestDescent.getOutput();
 
     return 0;
 }

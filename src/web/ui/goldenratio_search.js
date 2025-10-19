@@ -165,9 +165,6 @@ export function render(formContainer, resultsContainer, Module) {
             const isMin = (problemType === "Min");
             const result = Module.runGoldenSectionSearch(func, params[0], params[1], params[2], isMin);
             resultsContainer.innerHTML = generateTableFromOutput(result.outputString);
-
-            console.log(result.outputString);
-            
         } catch (err) {
             resultsContainer.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
         }

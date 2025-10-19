@@ -1327,6 +1327,44 @@ emscripten::val runGoldenSectionSearch(emscripten::val jsFunction, emscripten::v
     return jsResult;
 }
 
+emscripten::val runSteepestDescent(emscripten::val jsFunction, emscripten::val jsVars, emscripten::val jsPoints, emscripten::val jsIsMin)
+{
+    std::string function = jsFunction.as<std::string>();
+
+    std::vector<std::string> vars;
+    if (!jsVars.isUndefined() && !jsVars.isNull())
+    {
+        unsigned len = jsVars["length"].as<unsigned>();
+        vars.reserve(len);
+        for (unsigned i = 0; i < len; ++i)
+        {
+            vars.push_back(jsVars[i].as<std::string>());
+        }
+    }
+
+    std::vector<double> points;
+    if (!jsPoints.isUndefined() && !jsPoints.isNull())
+    {
+        unsigned len = jsPoints["length"].as<unsigned>();
+        points.reserve(len);
+        for (unsigned i = 0; i < len; ++i)
+        {
+            points.push_back(jsPoints[i].as<double>());
+        }
+    }
+
+    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+
+    SteepestDescent solver(verbose);
+    solver.DoSteepestDescent(function, vars, points, isMin);
+
+    emscripten::val jsResult = emscripten::val::object();
+
+    jsResult.set("outputString", emscripten::val(solver.getOutput()));
+
+    return jsResult;
+}
+
 // Bindings
 EMSCRIPTEN_BINDINGS(simplex_module)
 {
@@ -1351,7 +1389,7 @@ EMSCRIPTEN_BINDINGS(simplex_module)
     emscripten::function("runMachineSchedulingTardinessScheduler", &runMachineSchedulingTardinessScheduler);
     emscripten::function("runMachineSchedulingPenaltyScheduler", &runMachineSchedulingPenaltyScheduler);
     emscripten::function("runGoldenSectionSearch", &runGoldenSectionSearch);
-    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
+    emscripten::function("runSteepestDescent", &runSteepestDescent);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
