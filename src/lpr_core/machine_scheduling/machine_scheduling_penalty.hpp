@@ -44,12 +44,13 @@ class JobScheduler
 {
 private:
     std::vector<Job> jobs;
-    std::vector<int> penalties;
+    std::vector<double> penalties;
     int bestCandidate;
     std::vector<std::string> bestSequence;
     std::string bestCandidateLetter;
     int candidateCount;
     std::vector<ProblemData> allProblems;
+    mutable std::ostringstream oss;
 
     int calculateRemainingTime()
     {
@@ -304,7 +305,10 @@ private:
     }
 
 public:
-    JobScheduler(const std::vector<std::vector<int>> &jobData, const std::vector<int> &penaltyRates)
+    JobScheduler()
+        : bestCandidate(INT_MAX), candidateCount(0) {}
+
+    JobScheduler(const std::vector<std::vector<double>> &jobData, const std::vector<double> &penaltyRates)
         : penalties(penaltyRates), bestCandidate(INT_MAX), candidateCount(0)
     {
 
@@ -312,6 +316,11 @@ public:
         {
             jobs.emplace_back(jobInfo[0], jobInfo[1], jobInfo[2]);
         }
+    }
+
+    std::string getCollectedOutput() const
+    {
+        return oss.str();
     }
 
     void solve()
@@ -326,16 +335,15 @@ public:
         candidateCount = 1;
         bestCandidateLetter = "A";
 
-        std::cout << "Initial greedy total penalty: " << initialPenalty << std::endl;
-        std::cout << "Initial sequence (forward): ";
+        oss << "Initial greedy total penalty: " << initialPenalty << "\n";
+        oss << "Initial sequence (forward): ";
         for (size_t i = 0; i < initialSequence.size(); ++i)
         {
             if (i > 0)
-                std::cout << " ";
-            std::cout << initialSequence[i];
+                oss << " ";
+            oss << initialSequence[i];
         }
-        std::cout << std::endl
-                  << std::endl;
+        oss << "\n\n";
 
         // Run branch-and-bound
         branch(static_cast<int>(jobs.size()), 0, std::vector<std::string>());
@@ -350,16 +358,16 @@ public:
         // Print all problems in order
         for (const auto &problem : allProblems)
         {
-            std::cout << "====================" << std::endl;
+            oss << "====================\n";
             if (problem.isSolution)
             {
-                std::cout << "Problem " << problem.number << std::endl;
-                std::cout << "Total penalty = " << problem.totalPenalty << " *" << std::endl;
+                oss << "Problem " << problem.number << "\n";
+                oss << "Total penalty = " << problem.totalPenalty << " *\n";
             }
             else
             {
-                std::cout << "Problem " << problem.number << std::endl;
-                std::cout << problem.sequence << std::endl;
+                oss << "Problem " << problem.number << "\n";
+                oss << problem.sequence << "\n";
 
                 // Build time required string
                 std::string timeStr = "";
@@ -375,18 +383,18 @@ public:
                     }
                 }
 
-                std::cout << "Time required = " << timeStr << " = " << problem.remainingTime << " days" << std::endl;
-                std::cout << "Overdue = " << problem.remainingTime << "-" << problem.dueDate
-                          << " = " << problem.overdueDays << " days" << std::endl;
-                std::cout << "Penalty = " << problem.overdueDays << " * " << problem.penaltyRate
-                          << " = " << problem.jobPenalty << std::endl;
-                std::cout << "Total penalty = " << problem.currentPenalty << "+" << problem.jobPenalty
-                          << " = " << problem.totalPenalty << std::endl;
+                oss << "Time required = " << timeStr << " = " << problem.remainingTime << " days\n";
+                oss << "Overdue = " << problem.remainingTime << "-" << problem.dueDate
+                    << " = " << problem.overdueDays << " days\n";
+                oss << "Penalty = " << problem.overdueDays << " * " << problem.penaltyRate
+                    << " = " << problem.jobPenalty << "\n";
+                oss << "Total penalty = " << problem.currentPenalty << "+" << problem.jobPenalty
+                    << " = " << problem.totalPenalty << "\n";
 
                 if (problem.pruned)
                 {
-                    std::cout << "Eliminated by Candidate " << problem.bestCandidate << " "
-                              << problem.bestCandidateLetter << std::endl;
+                    oss << "Eliminated by Candidate " << problem.bestCandidate << " "
+                        << problem.bestCandidateLetter << "\n";
                 }
                 else
                 {
@@ -407,36 +415,386 @@ public:
                             jobCount++;
                     }
 
-                    std::cout << "Branching on x" << jobIdStr << jobCount << std::endl;
+                    oss << "Branching on x" << jobIdStr << jobCount << "\n";
                 }
             }
         }
 
-        std::cout << std::endl;
-        std::cout << "Best total penalty: " << bestCandidate << " " << bestCandidateLetter << std::endl;
-        std::cout << "Best sequence: ";
+        oss << "\n";
+        oss << "Best total penalty: " << bestCandidate << " " << bestCandidateLetter << "\n";
+        oss << "Best sequence (backward positions): ";
         for (size_t i = 0; i < bestSequence.size(); ++i)
         {
             if (i > 0)
-                std::cout << " ";
-            std::cout << bestSequence[i];
+                oss << " ";
+            oss << bestSequence[i];
         }
-        std::cout << std::endl;
+        oss << "\n";
+    }
+};
+
+class MachineSchedulingPenalty
+{
+private:
+    bool isConsoleOutput;
+    std::ostringstream oss;
+
+public:
+    MachineSchedulingPenalty(bool isConsoleOutput = false) : isConsoleOutput(isConsoleOutput) {}
+    ~MachineSchedulingPenalty() = default;
+
+    // Get collected output
+    std::string getCollectedOutput() const
+    {
+        return oss.str();
+    }
+
+    std::string getJSON()
+    {
+        return to_d3_json(oss.str());
+    }
+
+    void runPenaltyScheduler(const std::vector<std::vector<double>> &jobData, const std::vector<double> &penaltyRates)
+    {
+        oss << "PENALTY SCHEDULER\n";
+        oss << std::string(80, '=') << "\n";
+
+        JobScheduler solver(jobData, penaltyRates);
+
+        solver.solve();
+
+        oss << solver.getCollectedOutput();
+
+        if (isConsoleOutput)
+        {
+            std::cout << oss.str();
+
+            std::cout << to_d3_json(oss.str());
+        }
+    }
+
+    struct Node
+    {
+        std::string name;
+        std::string variables;
+        std::string time_required;
+        std::string overdue;
+        std::string penalty;
+        std::string total_penalty;
+        std::string status;
+        std::string eliminated_by;
+        std::string branch_on;
+        std::vector<Node *> children;
+
+        // For root
+        std::string initial_penalty;
+        std::string initial_sequence;
+        std::string best_penalty;
+        std::string best_sequence;
+    };
+
+    std::string json_escape(const std::string &s)
+    {
+        std::string res;
+        for (char c : s)
+        {
+            if (c == '\"')
+                res += "\\\"";
+            else if (c == '\\')
+                res += "\\\\";
+            else
+                res += c;
+        }
+        return res;
+    }
+
+    void to_json(std::ostringstream &os, Node *node, bool is_root = false)
+    {
+        os << "{";
+        os << "\"name\":\"" << json_escape(node->name) << "\"";
+        if (!node->variables.empty())
+        {
+            os << ",\"variables\":\"" << json_escape(node->variables) << "\"";
+        }
+        if (!node->time_required.empty())
+        {
+            os << ",\"time_required\":\"" << json_escape(node->time_required) << "\"";
+        }
+        if (!node->overdue.empty())
+        {
+            os << ",\"overdue\":\"" << json_escape(node->overdue) << "\"";
+        }
+        if (!node->penalty.empty())
+        {
+            os << ",\"penalty\":\"" << json_escape(node->penalty) << "\"";
+        }
+        if (!node->total_penalty.empty())
+        {
+            os << ",\"total_penalty\":\"" << json_escape(node->total_penalty) << "\"";
+        }
+        if (!node->status.empty())
+        {
+            os << ",\"status\":\"" << json_escape(node->status) << "\"";
+        }
+        if (!node->eliminated_by.empty())
+        {
+            os << ",\"eliminated_by\":\"" << json_escape(node->eliminated_by) << "\"";
+        }
+        if (!node->branch_on.empty())
+        {
+            os << ",\"branch_on\":\"" << json_escape(node->branch_on) << "\"";
+        }
+        if (is_root)
+        {
+            if (!node->initial_penalty.empty())
+            {
+                os << ",\"initial_penalty\":\"" << json_escape(node->initial_penalty) << "\"";
+            }
+            if (!node->initial_sequence.empty())
+            {
+                os << ",\"initial_sequence\":\"" << json_escape(node->initial_sequence) << "\"";
+            }
+            if (!node->best_penalty.empty())
+            {
+                os << ",\"best_penalty\":\"" << json_escape(node->best_penalty) << "\"";
+            }
+            if (!node->best_sequence.empty())
+            {
+                os << ",\"best_sequence\":\"" << json_escape(node->best_sequence) << "\"";
+            }
+        }
+        if (!node->children.empty())
+        {
+            os << ",\"children\":[";
+            for (size_t i = 0; i < node->children.size(); ++i)
+            {
+                to_json(os, node->children[i]);
+                if (i < node->children.size() - 1)
+                    os << ",";
+            }
+            os << "]";
+        }
+        os << "}";
+    }
+
+    void delete_tree(Node *node)
+    {
+        if (node)
+        {
+            for (auto child : node->children)
+            {
+                delete_tree(child);
+            }
+            delete node;
+        }
+    }
+
+    std::string trim(const std::string &str)
+    {
+        size_t first = str.find_first_not_of(" \t");
+        if (first == std::string::npos)
+            return "";
+        size_t last = str.find_last_not_of(" \t");
+        return str.substr(first, (last - first + 1));
+    }
+
+    int get_level(const std::string &prob_id)
+    {
+        int dots = 0;
+        for (char c : prob_id)
+        {
+            if (c == '.')
+                ++dots;
+        }
+        return dots + 1;
+    }
+
+    std::string to_d3_json(const std::string &output_str)
+    {
+        std::stringstream ss(output_str);
+        std::string line;
+        std::vector<std::string> lines;
+        while (std::getline(ss, line))
+        {
+            lines.push_back(line);
+        }
+
+        Node *root = new Node();
+        root->name = "root";
+
+        std::vector<Node *> stack;
+        stack.push_back(root);
+
+        size_t i = 0;
+        while (i < lines.size())
+        {
+            line = trim(lines[i]);
+            if (line.empty() || line.find("=====") == 0 || line == "PENALTY SCHEDULER")
+            {
+                ++i;
+                continue;
+            }
+            if (line.find("Initial greedy total penalty:") == 0)
+            {
+                root->initial_penalty = trim(line.substr(30));
+                ++i;
+                continue;
+            }
+            if (line.find("Initial sequence (forward):") == 0)
+            {
+                root->initial_sequence = trim(line.substr(27));
+                ++i;
+                continue;
+            }
+            if (line.find("Best total penalty:") == 0)
+            {
+                root->best_penalty = trim(line.substr(20));
+                ++i;
+                continue;
+            }
+            if (line.find("Best sequence (backward positions):") == 0)
+            {
+                root->best_sequence = trim(line.substr(36));
+                ++i;
+                continue;
+            }
+            if (line.find("Problem ") == 0)
+            {
+                std::string prob_id = trim(line.substr(8));
+                int level = get_level(prob_id);
+
+                Node *new_node = new Node();
+                new_node->name = prob_id;
+
+                bool parsed = false;
+                if (++i < lines.size())
+                {
+                    new_node->variables = trim(lines[i]);
+                    parsed = true;
+                }
+
+                bool is_solution = parsed && (new_node->variables.find("Total ") == 0);
+
+                if (is_solution)
+                {
+                    size_t eq_pos = new_node->variables.find("=");
+                    if (eq_pos != std::string::npos)
+                    {
+                        std::string total_str = trim(new_node->variables.substr(eq_pos + 1));
+                        size_t star_pos = total_str.find("*");
+                        if (star_pos != std::string::npos)
+                        {
+                            total_str = trim(total_str.substr(0, star_pos));
+                        }
+                        // No " days" in penalty
+                        new_node->total_penalty = total_str;
+                    }
+                    new_node->status = "solution";
+                }
+                else
+                {
+                    if (++i < lines.size())
+                    {
+                        std::string time_line = trim(lines[i]);
+                        size_t eq_pos = time_line.find("=");
+                        if (eq_pos != std::string::npos)
+                        {
+                            new_node->time_required = trim(time_line.substr(eq_pos + 1));
+                        }
+                    }
+                    if (++i < lines.size())
+                    {
+                        std::string over_line = trim(lines[i]);
+                        size_t eq_pos = over_line.find("=");
+                        if (eq_pos != std::string::npos)
+                        {
+                            new_node->overdue = trim(over_line.substr(eq_pos + 1));
+                        }
+                    }
+                    if (++i < lines.size())
+                    {
+                        std::string penalty_line = trim(lines[i]);
+                        size_t eq_pos = penalty_line.find("=");
+                        if (eq_pos != std::string::npos)
+                        {
+                            new_node->penalty = trim(penalty_line.substr(eq_pos + 1));
+                        }
+                    }
+                    if (++i < lines.size())
+                    {
+                        std::string total_line = trim(lines[i]);
+                        size_t eq_pos = total_line.find("=");
+                        if (eq_pos != std::string::npos)
+                        {
+                            new_node->total_penalty = trim(total_line.substr(eq_pos + 1));
+                        }
+                    }
+                    if (++i < lines.size())
+                    {
+                        std::string action_line = trim(lines[i]);
+                        if (action_line.find("Eliminated by ") == 0)
+                        {
+                            new_node->status = "eliminated";
+                            new_node->eliminated_by = trim(action_line.substr(14));
+                        }
+                        else if (action_line.find("Branching on ") == 0)
+                        {
+                            new_node->status = "branching";
+                            new_node->branch_on = trim(action_line.substr(13));
+                        }
+                    }
+                }
+                // Add to tree
+                while (stack.size() > static_cast<size_t>(level))
+                {
+                    stack.pop_back();
+                }
+                if (!stack.empty())
+                {
+                    Node *parent = stack.back();
+                    parent->children.push_back(new_node);
+                }
+                stack.push_back(new_node);
+                ++i; // Skip the separator
+            }
+            else
+            {
+                ++i;
+            }
+        }
+
+        std::ostringstream os;
+        to_json(os, root, true);
+        std::string json = os.str();
+
+        delete_tree(root);
+        return json;
     }
 
     // Usage example function
-    inline void runJobSchedulerExample()
+    inline void runPenaltySchedulerExample()
     {
-        std::vector<std::vector<int>> jobData = {
-            {1, 6, 10}, // Job 1: processing time 6, due date 10
-            {2, 6, 14}, // Job 2: processing time 6, due date 14
-            {3, 7, 15}, // Job 3: processing time 7, due date 15
-            {4, 11, 16} // Job 4: processing time 11, due date 16
-        };
+        oss << "PENALTY SCHEDULER - EXAMPLE\n";
+        oss << std::string(80, '=') << "\n";
 
-        std::vector<int> penaltyRates = {5, 6, 5, 6}; // penalty rates (per overdue day)
+        std::vector<std::vector<double>> jobData = {
+            {1, 6, 10},
+            {2, 6, 14},
+            {3, 7, 15},
+            {4, 11, 16}};
 
-        JobScheduler scheduler(jobData, penaltyRates);
-        scheduler.solve();
+        std::vector<double> penaltyRates = {5, 6, 5, 6};
+
+        JobScheduler solver(jobData, penaltyRates);
+        solver.solve();
+
+        oss << solver.getCollectedOutput();
+
+        if (isConsoleOutput)
+        {
+            std::cout << oss.str();
+
+            std::cout << to_d3_json(oss.str());
+        }
     }
 };

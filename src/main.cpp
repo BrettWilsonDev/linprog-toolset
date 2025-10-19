@@ -2,23 +2,31 @@
 #include "web/web_bindings.hpp"
 #endif
 
-#include "./lpr_core/hungarian_algorithm/hungarian_algorithm.hpp"
+#include "./lpr_core/machine_scheduling/tardiness_scheduler.hpp"
+#include "./lpr_core/machine_scheduling/machine_scheduling_penalty.hpp"
 
 #include <iostream>
 
 int main(int argc, char *argv[])
 {
-    const double blank = -999;
-    std::vector<std::vector<double>> costMatrixWithBlanks = {
-        {22, 18, 30, 18},
-        {18, blank, 27, 22},
-        {26, 20, 28, 28},
-        {16, 22, blank, 14},
-        {21, blank, 25, 28}};
+    std::vector<std::vector<double>> jobData = {
+        {1, 6, 8},  // Job 1: processing time 6, due date 8
+        {2, 4, 4},  // Job 2: processing time 4, due date 4
+        {3, 5, 12}, // Job 3: processing time 5, due date 12
+        {4, 8, 16}  // Job 4: processing time 8, due date 16
+    };
 
-    Hungarian solver(true);
+    // MachineSchedulingTardiness solver(true);
 
-    solver.runHungarian(costMatrixWithBlanks, false, -999, true);
+    // solver.runTardinessScheduler(jobData);
+
+    // Tardiness solver(true);
+
+    // solver.runTardinessScheduler(jobData);
+
+    MachineSchedulingPenalty solver(true);
+
+    solver.runPenaltyScheduler(jobData, {5, 6, 5, 6});
 
     return 0;
 }

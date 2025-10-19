@@ -1224,6 +1224,81 @@ emscripten::val runHungarianAlgorithm(emscripten::val jsCostMatrixWithBlanks, em
     return jsResult;
 }
 
+emscripten::val runMachineSchedulingTardinessScheduler(emscripten::val jsJobData)
+{
+    std::vector<std::vector<double>> jobData;
+    if (!jsJobData.isUndefined() && !jsJobData.isNull())
+    {
+        unsigned rows = jsJobData["length"].as<unsigned>();
+        jobData.reserve(rows);
+        for (unsigned r = 0; r < rows; ++r)
+        {
+            emscripten::val row = jsJobData[r];
+            unsigned cols = row["length"].as<unsigned>();
+            std::vector<double> rowVec;
+            rowVec.reserve(cols);
+            for (unsigned c = 0; c < cols; ++c)
+            {
+                rowVec.push_back(row[c].as<double>());
+            }
+            jobData.push_back(rowVec);
+        }
+    }
+
+    MachineSchedulingTardiness solver(verbose);
+
+    solver.runTardinessScheduler(jobData);
+
+    emscripten::val jsResult = emscripten::val::object();
+
+    jsResult.set("json", emscripten::val(solver.getJSON()));
+
+    return jsResult;
+}
+
+emscripten::val runMachineSchedulingPenaltyScheduler(emscripten::val jsJobData, emscripten::val jsPenalty)
+{
+    std::vector<std::vector<double>> jobData;
+    if (!jsJobData.isUndefined() && !jsJobData.isNull())
+    {
+        unsigned rows = jsJobData["length"].as<unsigned>();
+        jobData.reserve(rows);
+        for (unsigned r = 0; r < rows; ++r)
+        {
+            emscripten::val row = jsJobData[r];
+            unsigned cols = row["length"].as<unsigned>();
+            std::vector<double> rowVec;
+            rowVec.reserve(cols);
+            for (unsigned c = 0; c < cols; ++c)
+            {
+                rowVec.push_back(row[c].as<double>());
+            }
+            jobData.push_back(rowVec);
+        }
+    }
+
+    std::vector<double> penalty;
+    if (!jsPenalty.isUndefined() && !jsPenalty.isNull())
+    {
+        unsigned len = jsPenalty["length"].as<unsigned>();
+        penalty.reserve(len);
+        for (unsigned i = 0; i < len; ++i)
+        {
+            penalty.push_back(jsPenalty[i].as<double>());
+        }
+    }
+
+    MachineSchedulingPenalty solver(verbose);
+
+    solver.runPenaltyScheduler(jobData, penalty);
+
+    emscripten::val jsResult = emscripten::val::object();
+
+    jsResult.set("json", emscripten::val(solver.getJSON()));
+
+    return jsResult;
+}
+
 // Bindings
 EMSCRIPTEN_BINDINGS(simplex_module)
 {
@@ -1245,6 +1320,10 @@ EMSCRIPTEN_BINDINGS(simplex_module)
     emscripten::function("runCheapestInsertion", &runCheapestInsertion);
     emscripten::function("runNearestNeighbor", &runNearestNeighbor);
     emscripten::function("runHungarianAlgorithm", &runHungarianAlgorithm);
+    emscripten::function("runMachineSchedulingTardinessScheduler", &runMachineSchedulingTardinessScheduler);
+    emscripten::function("runMachineSchedulingPenaltyScheduler", &runMachineSchedulingPenaltyScheduler);
+    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
+    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);

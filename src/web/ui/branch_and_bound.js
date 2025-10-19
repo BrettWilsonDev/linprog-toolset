@@ -13,67 +13,67 @@ export async function render(formContainer, resultsContainer, Module) {
     // Insert HTML
     formContainer.innerHTML = `
     <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f9fafb; }
-    #tree { width: 100%; height: 100vh; overflow: hidden; }
-    svg { display: block; }
-    .link { fill: none; stroke: #6b7280; stroke-width: 2px; }
-    .node-box { 
-        background-color: #f3f4f6; 
-        border-radius: 8px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        padding: 8px; 
-        box-sizing: border-box; 
-        overflow: auto; 
-    }
-    .node-box.integer { background-color: #d1fae5; }
-    .node-box.infeasible { background-color: #fee2e2; }
-    .node-box.pruned { background-color: #e5e7eb; }
-    .tableau table { border-collapse: collapse; margin-top: 6px; margin-left: auto; margin-right: auto; max-width: 100%; }
-    .tableau th, .tableau td { border: 1px solid #d1d5db; padding: 3px; text-align: right; font-size: 9px; word-break: break-all; }
-    .tableau th { background-color: #e5e7eb; }
-    .tableau .pivot-cell { background-color: hsl(103, 90%, 62%); font-weight: bold; }
-    .tableau .pivot-row-col { background-color: hsl(103, 90%, 62%); }
-    </style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f9fafb; }
+        #tree { width: 100%; height: 100vh; overflow: hidden; }
+        svg { display: block; }
+        .link { fill: none; stroke: #6b7280; stroke-width: 2px; }
+        .node-box { 
+            background-color: #f3f4f6; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            padding: 8px; 
+            box-sizing: border-box; 
+            overflow: auto; 
+        }
+        .node-box.integer { background-color: #d1fae5; }
+        .node-box.infeasible { background-color: #fee2e2; }
+        .node-box.pruned { background-color: #e5e7eb; }
+        .tableau table { border-collapse: collapse; margin-top: 6px; margin-left: auto; margin-right: auto; max-width: 100%; }
+        .tableau th, .tableau td { border: 1px solid #d1d5db; padding: 3px; text-align: right; font-size: 9px; word-break: break-all; }
+        .tableau th { background-color: #e5e7eb; }
+        .tableau .pivot-cell { background-color: hsl(103, 90%, 62%); font-weight: bold; }
+        .tableau .pivot-row-col { background-color: hsl(103, 90%, 62%); }
+        </style>
 
-    <h1>Branch and Bound</h1>
+        <h1>Branch and Bound</h1>
 
-    <div>
-      <label><input type="radio" name="problemType" value="Max" checked> Max</label>
-      <label><input type="radio" name="problemType" value="Min"> Min</label>
-    </div>
+        <div>
+        <label><input type="radio" name="problemType" value="Max" checked> Max</label>
+        <label><input type="radio" name="problemType" value="Min"> Min</label>
+        </div>
 
-    <p id="problemTypeText">Problem is: Max</p>
+        <p id="problemTypeText">Problem is: Max</p>
 
-    <div class="row">
-      <button id="addDecisionVar">decision variables +</button>
-      <button id="removeDecisionVar">decision variables -</button>
-    </div>
+        <div class="row">
+        <button id="addDecisionVar">decision variables +</button>
+        <button id="removeDecisionVar">decision variables -</button>
+        </div>
 
-    <div id="objectiveFunction" class="row"></div>
+        <div id="objectiveFunction" class="row"></div>
 
-    <div class="row">
-      <button id="addConstraint">Constraint +</button>
-      <button id="removeConstraint">Constraint -</button>
-    </div>
+        <div class="row">
+        <button id="addConstraint">Constraint +</button>
+        <button id="removeConstraint">Constraint -</button>
+        </div>
 
-    <div id="constraintsContainer"></div>
+        <div id="constraintsContainer"></div>
 
-    <div id="toggleContainer" style="display: none;">
-    <br>
-    <input type="checkbox" id="toggleBtn" />
-    <label for="toggleBtn">Assume Binary</label>
-    <br>
-    <br>
-    </div>
+        <div id="toggleContainer" style="display: none;">
+        <br>
+        <input type="checkbox" id="toggleBtn" />
+        <label for="toggleBtn">Assume Binary</label>
+        <br>
+        <br>
+        </div>
 
 
-    <div class="row">
-      <button id="solveButton">Solve</button>
-      <button id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
-    </div>
+        <div class="row">
+        <button id="solveButton">Solve</button>
+        <button id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
+        </div>
 
-    <h1 class="text-2xl font-bold p-4">Branch and Bound Tree</h1>
-    <div id="tree"></div>
+        <h1 class="text-2xl font-bold p-4">Branch and Bound Tree</h1>
+        <div id="tree"></div>
   `;
 
 
