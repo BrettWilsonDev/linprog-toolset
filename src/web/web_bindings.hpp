@@ -27,6 +27,7 @@
 #include "../lpr_core/sensitivity_analysis/sensitivity_analysis.hpp"
 #include "../lpr_core/descent_algorithm/steepest_descent.hpp"
 #include "../lpr_core/graphical_solver/graphical_solver.hpp"
+#include "../lpr_core/goldenratio_search/golden_section_search.hpp"
 
 struct LPRResult
 {
@@ -1299,6 +1300,33 @@ emscripten::val runMachineSchedulingPenaltyScheduler(emscripten::val jsJobData, 
     return jsResult;
 }
 
+emscripten::val runGoldenSectionSearch(emscripten::val jsFunction, emscripten::val jsXLower, emscripten::val jsXUpper, emscripten::val jsTol, emscripten::val jsIsMin)
+{
+    std::string function = jsFunction.as<std::string>();
+    double xLower = jsXLower.as<double>();
+    double xUpper = jsXUpper.as<double>();
+    double tol = jsTol.as<double>();
+
+    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+
+    // std::cout << "Function: " << function << std::endl;
+    // std::cout << "Lower Bound: " << xLower << std::endl;
+    // std::cout << "Upper Bound: " << xUpper << std::endl;
+    // std::cout << "Tolerance: " << tol << std::endl;
+    // std::cout << "Minimize: " << isMin << std::endl;
+
+    GoldenSectionSearch solver(verbose);
+
+    // solver.DoGoldenRatioSearch(const std::string &func, double xLower, double xUpper, double tol, bool findMin = false)
+    solver.DoGoldenRatioSearch(function, xLower, xUpper, tol, isMin);
+
+    emscripten::val jsResult = emscripten::val::object();
+
+    jsResult.set("outputString", emscripten::val(solver.getOutput()));
+
+    return jsResult;
+}
+
 // Bindings
 EMSCRIPTEN_BINDINGS(simplex_module)
 {
@@ -1322,7 +1350,7 @@ EMSCRIPTEN_BINDINGS(simplex_module)
     emscripten::function("runHungarianAlgorithm", &runHungarianAlgorithm);
     emscripten::function("runMachineSchedulingTardinessScheduler", &runMachineSchedulingTardinessScheduler);
     emscripten::function("runMachineSchedulingPenaltyScheduler", &runMachineSchedulingPenaltyScheduler);
-    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
+    emscripten::function("runGoldenSectionSearch", &runGoldenSectionSearch);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
     // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);

@@ -75,6 +75,7 @@
     <button onclick="loadUI('duality')">Linier Programming Duality</button>
     <button onclick="loadUI('goal_penalties_simplex')">Goal Penalties Simplex</button>
     <button onclick="loadUI('goal_preemptive_simplex')">Goal Preemptive Simplex</button>
+    <button onclick="loadUI('goldenratio_search')">Golden Ratio Search</button>
     <button onclick="loadUI('graphical_solver')">Graphical Solver</button>
     <button onclick="loadUI('hungarian_algorithm')">Hungarian Algorithm</button>
     <button onclick="loadUI('machine_scheduling')">Machine Scheduling</button>
@@ -109,6 +110,7 @@
     import * as nearest_neighbor_tsp from "./ui/nearest_neighbor_tsp.js";
     import * as hungarian_algorithm from "./ui/hungarian_algorithm.js";
     import * as machine_scheduling from "./ui/machine_scheduling.js";
+    import * as goldenratio_search from "./ui/goldenratio_search.js";
 
     // Single global WASM module
     let Module = null;
@@ -145,6 +147,7 @@
       nearest_neighbor_tsp,
       hungarian_algorithm,
       machine_scheduling,
+      goldenratio_search,
     };
 
     // Global loader (called by sidebar buttons)

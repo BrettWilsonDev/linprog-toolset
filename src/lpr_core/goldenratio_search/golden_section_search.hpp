@@ -4,16 +4,37 @@
 #include <iomanip>
 #include <cmath>
 #include <string>
+#include <sstream>
 #include "exprtk.hpp"
 
 class GoldenSectionSearch
 {
+private:
+    std::string output;     // Stores the final output
+    std::ostringstream oss; // Stream for building output
+    bool isConsoleOutput;
+
 public:
-    GoldenSectionSearch() = default;
+    // GoldenSectionSearch() = default;
+    GoldenSectionSearch(bool isConsoleOutput = false) : isConsoleOutput(isConsoleOutput) {}
+    ~GoldenSectionSearch() = default;
+
+    // Getter for the output
+    std::string getOutput() const
+    {
+        return output;
+    }
+
+    // Clear the output (optional, if you want to reset)
+    void clearOutput()
+    {
+        oss.str("");
+        output.clear();
+    }
 
     double DoGoldenRatioSearch(const std::string &func, double xLower, double xUpper, double tol, bool findMin = false)
     {
-        std::cout << "\nFunction: " << func << "\n";
+        oss << "\nFunction: " << func << "\n";
 
         // ExprTk setup
         exprtk::symbol_table<double> symbolTable;
@@ -39,13 +60,13 @@ public:
         symbolTable.get_variable("x")->ref() = d;
         double fd = expression.value();
 
-        std::cout << std::fixed << std::setprecision(6);
-        std::cout << "Iteration | a        | b        | d        | c        | f(c)     | f(d)     | e\n";
+        oss << std::fixed << std::setprecision(6);
+        oss << "Iteration | xLower        | xUpper        | x1        | x2        | f(x1)     | f(x2)     | e\n";
 
         int iter = 1;
         double e = std::abs(b - a);
-        std::cout << iter << "         | " << a << " | " << b << " | " << d << " | " << c
-                  << " | " << fc << " | " << fd << " | " << e << "\n";
+        oss << iter << "         | " << a << " | " << b << " | " << d << " | " << c
+            << " | " << fc << " | " << fd << " | " << e << "\n";
         iter++;
 
         while (e > tol)
@@ -70,8 +91,8 @@ public:
             }
 
             e = std::abs(b - a);
-            std::cout << iter << "         | " << a << " | " << b << " | " << d << " | " << c
-                      << " | " << fc << " | " << fd << " | " << e << "\n";
+            oss << iter << "         | " << a << " | " << b << " | " << d << " | " << c
+                << " | " << fc << " | " << fd << " | " << e << "\n";
             iter++;
         }
 
@@ -79,8 +100,17 @@ public:
         symbolTable.get_variable("x")->ref() = xOpt;
         double fOpt = expression.value();
 
-        std::cout << "\nOptimal x: " << xOpt << "\n";
-        std::cout << (findMin ? "Min" : "Max") << " f(x): " << fOpt << "\n";
+        oss << "\nOptimal x: " << xOpt << "\n";
+        // oss << (findMin ? "Min" : "Max") << " f(x): " << fOpt << "\n";
+        oss << (findMin ? "Min" : "Max") << " z: " << fOpt << " Radians\n";
+
+        // Store the output in the class member
+        output = oss.str();
+
+        if (isConsoleOutput)
+        {
+            std::cout << output << std::endl;
+        }
 
         return xOpt;
     }
@@ -92,16 +122,18 @@ public:
         double xUpper = 1.570796;
         double tol = 0.05;
 
-        std::cout << "Finding Maximum:\n";
+        oss << "Finding Maximum:\n";
         DoGoldenRatioSearch(func, xLower, xUpper, tol, false);
 
-
-        func = "(x)^3-6*x"; 
-        xLower = 0; 
-        xUpper = 3; // Pi/2 
+        func = "(x)^3-6*x";
+        xLower = 0;
+        xUpper = 3;
         tol = 0.05;
 
-        std::cout << "Finding Minimum:\n";
+        oss << "Finding Minimum:\n";
         DoGoldenRatioSearch(func, xLower, xUpper, tol, true);
+
+        // Update output with the final concatenated output
+        output = oss.str();
     }
 };
