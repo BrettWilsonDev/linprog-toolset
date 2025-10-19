@@ -62,92 +62,134 @@ inline void toggleVerbose()
     std::cout << "Verbose mode is " << (verbose ? "ON" : "OFF") << std::endl;
 }
 
-// Helper: convert 3D std::vector to JS array of arrays of arrays
-emscripten::val tableausToJS(const std::vector<std::vector<std::vector<double>>> &tableaus)
+// Input conversion helpers
+std::vector<double> jsToVecDouble(const emscripten::val& jsArr)
 {
-    emscripten::val jsTableaus = emscripten::val::array();
-    for (size_t i = 0; i < tableaus.size(); ++i)
+    if (jsArr.isNull() || jsArr.isUndefined()) return {};
+    unsigned len = jsArr["length"].as<unsigned>();
+    std::vector<double> vec(len);
+    for (unsigned i = 0; i < len; ++i) vec[i] = jsArr[i].as<double>();
+    return vec;
+}
+
+std::vector<int> jsToVecInt(const emscripten::val& jsArr)
+{
+    if (jsArr.isNull() || jsArr.isUndefined()) return {};
+    unsigned len = jsArr["length"].as<unsigned>();
+    std::vector<int> vec(len);
+    for (unsigned i = 0; i < len; ++i) vec[i] = jsArr[i].as<int>();
+    return vec;
+}
+
+std::vector<std::string> jsToVecString(const emscripten::val& jsArr)
+{
+    if (jsArr.isNull() || jsArr.isUndefined()) return {};
+    unsigned len = jsArr["length"].as<unsigned>();
+    std::vector<std::string> vec(len);
+    for (unsigned i = 0; i < len; ++i) vec[i] = jsArr[i].as<std::string>();
+    return vec;
+}
+
+std::vector<std::vector<double>> jsToVecVecDouble(const emscripten::val& js2D)
+{
+    if (js2D.isNull() || js2D.isUndefined()) return {};
+    unsigned rows = js2D["length"].as<unsigned>();
+    std::vector<std::vector<double>> mat(rows);
+    for (unsigned r = 0; r < rows; ++r)
     {
-        emscripten::val jsTableau = emscripten::val::array();
-        for (size_t r = 0; r < tableaus[i].size(); ++r)
-        {
-            emscripten::val jsRow = emscripten::val::array();
-            for (size_t c = 0; c < tableaus[i][r].size(); ++c)
-            {
-                jsRow.set(c, tableaus[i][r][c]);
-            }
-            jsTableau.set(r, jsRow);
-        }
-        jsTableaus.set(i, jsTableau);
+        mat[r] = jsToVecDouble(js2D[r]);
     }
-    return jsTableaus;
+    return mat;
+}
+
+std::vector<std::vector<std::string>> jsToVecVecString(const emscripten::val& js2D)
+{
+    if (js2D.isNull() || js2D.isUndefined()) return {};
+    unsigned rows = js2D["length"].as<unsigned>();
+    std::vector<std::vector<std::string>> mat(rows);
+    for (unsigned r = 0; r < rows; ++r)
+    {
+        mat[r] = jsToVecString(js2D[r]);
+    }
+    return mat;
+}
+
+// Output conversion helpers
+emscripten::val vecToJS(const std::vector<double>& vec)
+{
+    emscripten::val arr = emscripten::val::array();
+    for (size_t i = 0; i < vec.size(); ++i) arr.set(i, vec[i]);
+    return arr;
+}
+
+emscripten::val vecToJS(const std::vector<int>& vec)
+{
+    emscripten::val arr = emscripten::val::array();
+    for (size_t i = 0; i < vec.size(); ++i) arr.set(i, vec[i]);
+    return arr;
+}
+
+emscripten::val vecToJS(const std::vector<std::string>& vec)
+{
+    emscripten::val arr = emscripten::val::array();
+    for (size_t i = 0; i < vec.size(); ++i) arr.set(i, vec[i]);
+    return arr;
+}
+
+emscripten::val vecVecToJS(const std::vector<std::vector<double>>& mat)
+{
+    emscripten::val arr = emscripten::val::array();
+    for (size_t r = 0; r < mat.size(); ++r)
+    {
+        arr.set(r, vecToJS(mat[r]));
+    }
+    return arr;
+}
+
+emscripten::val vecVecToJS(const std::vector<std::vector<std::string>>& mat)
+{
+    emscripten::val arr = emscripten::val::array();
+    for (size_t r = 0; r < mat.size(); ++r)
+    {
+        arr.set(r, vecToJS(mat[r]));
+    }
+    return arr;
+}
+
+emscripten::val vecVecVecToJS(const std::vector<std::vector<std::vector<double>>>& tensor)
+{
+    emscripten::val arr = emscripten::val::array();
+    for (size_t i = 0; i < tensor.size(); ++i)
+    {
+        arr.set(i, vecVecToJS(tensor[i]));
+    }
+    return arr;
 }
 
 emscripten::val simplexResultToJS(const LPRResult &res)
 {
     emscripten::val jsRes = emscripten::val::object();
-
-    jsRes.set("tableaus", tableausToJS(res.tableaus));
-
-    emscripten::val jsChanging = emscripten::val::array();
-    for (size_t i = 0; i < res.changingVars.size(); ++i)
-        jsChanging.set(i, res.changingVars[i]);
-    jsRes.set("changingVars", jsChanging);
-
+    jsRes.set("tableaus", vecVecVecToJS(res.tableaus));
+    jsRes.set("changingVars", vecToJS(res.changingVars));
     jsRes.set("optimalSolution", res.optimalSolution);
-
-    emscripten::val jsPivotCols = emscripten::val::array();
-    for (size_t i = 0; i < res.pivotCols.size(); ++i)
-        jsPivotCols.set(i, res.pivotCols[i]);
-    jsRes.set("pivotCols", jsPivotCols);
-
-    emscripten::val jsPivotRows = emscripten::val::array();
-    for (size_t i = 0; i < res.pivotRows.size(); ++i)
-        jsPivotRows.set(i, res.pivotRows[i]);
-    jsRes.set("pivotRows", jsPivotRows);
-
-    emscripten::val jsHeader = emscripten::val::array();
-    for (size_t i = 0; i < res.headerRow.size(); ++i)
-        jsHeader.set(i, res.headerRow[i]);
-    jsRes.set("headerRow", jsHeader);
-
-    emscripten::val jsPhases = emscripten::val::array();
-    for (size_t i = 0; i < res.phases.size(); ++i)
-        jsPhases.set(i, res.phases[i]);
-    jsRes.set("phases", jsPhases);
-
+    jsRes.set("pivotCols", vecToJS(res.pivotCols));
+    jsRes.set("pivotRows", vecToJS(res.pivotRows));
+    jsRes.set("headerRow", vecToJS(res.headerRow));
+    jsRes.set("phases", vecToJS(res.phases));
     return jsRes;
 }
 
 emscripten::val resultToJS(const LPRResult &res)
 {
-    auto jsRes = simplexResultToJS(res);
-
-    return jsRes;
+    return simplexResultToJS(res);
 }
 
 std::tuple<std::vector<double>, std::vector<std::vector<double>>, bool> getInputSimplex(emscripten::val jsObjFunc, emscripten::val jsConstraints, std::string problemType)
 {
-    std::vector<double> obj;
-    unsigned len = jsObjFunc["length"].as<unsigned>();
-    for (unsigned i = 0; i < len; ++i)
-        obj.push_back(jsObjFunc[i].as<double>());
-
-    std::vector<std::vector<double>> cons;
-    unsigned outerLen = jsConstraints["length"].as<unsigned>();
-    for (unsigned i = 0; i < outerLen; ++i)
-    {
-        emscripten::val inner = jsConstraints[i];
-        unsigned innerLen = inner["length"].as<unsigned>();
-        std::vector<double> row;
-        for (unsigned j = 0; j < innerLen; ++j)
-            row.push_back(inner[j].as<double>());
-        cons.push_back(row);
-    }
-
+    auto obj = jsToVecDouble(jsObjFunc);
+    auto cons = jsToVecVecDouble(jsConstraints);
     bool isMin = (problemType == "Min");
-
-    return std::make_tuple(obj, cons, isMin);
+    return {obj, cons, isMin};
 }
 
 // The bound run functions
@@ -156,14 +198,11 @@ emscripten::val runDualSimplex(emscripten::val jsObjFunc, emscripten::val jsCons
     auto input = getInputSimplex(jsObjFunc, jsConstraints, problemType);
 
     DualSimplex dualSimplex(verbose);
-    auto blank = dualSimplex.DoDualSimplex(std::get<0>(input), std::get<1>(input), std::get<2>(input));
+    dualSimplex.DoDualSimplex(std::get<0>(input), std::get<1>(input), std::get<2>(input));
 
     auto solverRes = dualSimplex.GetResult();
     LPRResult res = toResult(solverRes);
-    // return simplexResultToJS(res);
-
-    auto jsRes = resultToJS(res);
-    return jsRes;
+    return resultToJS(res);
 }
 
 emscripten::val runTwoPhaseSimplex(emscripten::val jsObjFunc, emscripten::val jsConstraints, std::string problemType)
@@ -171,18 +210,13 @@ emscripten::val runTwoPhaseSimplex(emscripten::val jsObjFunc, emscripten::val js
     auto input = getInputSimplex(jsObjFunc, jsConstraints, problemType);
 
     TwoPhaseSimplex twoPhaseSimplex(verbose);
-    auto blank = twoPhaseSimplex.DoTwoPhase(std::get<0>(input), std::get<1>(input), std::get<2>(input));
+    twoPhaseSimplex.DoTwoPhase(std::get<0>(input), std::get<1>(input), std::get<2>(input));
 
     auto solverRes = twoPhaseSimplex.GetResult();
     LPRResult res = toResult(solverRes);
 
-    // return simplexResultToJS(res);
-
     auto jsRes = resultToJS(res);
-
-    // jsRes.set("wStr", twoPhaseSimplex.GetWString());
-    jsRes.set("wString", emscripten::val(twoPhaseSimplex.GetWString().c_str()));
-
+    jsRes.set("wString", emscripten::val(twoPhaseSimplex.GetWString()));
     return jsRes;
 }
 
@@ -246,124 +280,38 @@ emscripten::val runGoalPenaltiesSimplex(
     emscripten::val jsPenalties,
     emscripten::val jsOrderOverride = emscripten::val::array())
 {
-    // Convert JS arrays to C++ vectors
-    std::vector<std::vector<double>> goals;
-    for (unsigned i = 0; i < jsGoalConstraints["length"].as<unsigned>(); ++i)
-    {
-        std::vector<double> row;
-        emscripten::val jsRow = jsGoalConstraints[i];
-        for (unsigned j = 0; j < jsRow["length"].as<unsigned>(); ++j)
-        {
-            row.push_back(jsRow[j].as<double>());
-        }
-        goals.push_back(row);
-    }
-
-    std::vector<std::vector<double>> constraints;
-    for (unsigned i = 0; i < jsConstraints["length"].as<unsigned>(); ++i)
-    {
-        std::vector<double> row;
-        emscripten::val jsRow = jsConstraints[i];
-        for (unsigned j = 0; j < jsRow["length"].as<unsigned>(); ++j)
-        {
-            row.push_back(jsRow[j].as<double>());
-        }
-        constraints.push_back(row);
-    }
-
-    std::vector<double> penalties;
-    for (unsigned i = 0; i < jsPenalties["length"].as<unsigned>(); ++i)
-    {
-        penalties.push_back(jsPenalties[i].as<double>());
-    }
-
-    std::vector<int> orderOverride;
-    if (!jsOrderOverride.isUndefined() && jsOrderOverride["length"].as<unsigned>() > 0)
-    {
-        for (unsigned i = 0; i < jsOrderOverride["length"].as<unsigned>(); ++i)
-        {
-            orderOverride.push_back(jsOrderOverride[i].as<int>());
-        }
-    }
+    auto goals = jsToVecVecDouble(jsGoalConstraints);
+    auto constraints = jsToVecVecDouble(jsConstraints);
+    auto penalties = jsToVecDouble(jsPenalties);
+    auto orderOverride = jsToVecInt(jsOrderOverride);
 
     // Solve
     GoalPenaltiesSimplex solver(verbose);
-    auto blank = solver.doPenalties(goals, constraints, penalties, orderOverride);
+    solver.doPenalties(goals, constraints, penalties, orderOverride);
 
     // Build JS object using getters
     emscripten::val jsResult = emscripten::val::object();
 
     // Tableaus
-    emscripten::val jsTableaus = emscripten::val::array();
-    const auto &tableaus = solver.getTableaus();
-    for (size_t t = 0; t < tableaus.size(); ++t)
-    {
-        emscripten::val tbl = emscripten::val::array();
-        for (size_t r = 0; r < tableaus[t].size(); ++r)
-        {
-            emscripten::val row = emscripten::val::array();
-            for (size_t c = 0; c < tableaus[t][r].size(); ++c)
-            {
-                row.set(c, tableaus[t][r][c]);
-            }
-            tbl.set(r, row);
-        }
-        jsTableaus.set(t, tbl);
-    }
-    jsResult.set("tableaus", jsTableaus);
+    jsResult.set("tableaus", vecVecVecToJS(solver.getTableaus()));
 
     // GoalMetStrings
-    emscripten::val jsGoalMetStrings = emscripten::val::array();
-    const auto &gms = solver.getGoalMetStrings();
-    for (size_t i = 0; i < gms.size(); ++i)
-    {
-        emscripten::val row = emscripten::val::array();
-        for (size_t j = 0; j < gms[i].size(); ++j)
-        {
-            row.set(j, gms[i][j]);
-        }
-        jsGoalMetStrings.set(i, row);
-    }
-    jsResult.set("goalMetStrings", jsGoalMetStrings);
+    jsResult.set("goalMetStrings", vecVecToJS(solver.getGoalMetStrings()));
 
     // opTable
     jsResult.set("opTable", solver.getOpTable());
 
     // penaltiesTotals
-    emscripten::val jsPenaltiesTotals = emscripten::val::array();
-    const auto &pt = solver.getPenaltiesTotals();
-    for (size_t i = 0; i < pt.size(); ++i)
-    {
-        jsPenaltiesTotals.set(i, pt[i]);
-    }
-    jsResult.set("penaltiesTotals", jsPenaltiesTotals);
+    jsResult.set("penaltiesTotals", vecToJS(solver.getPenaltiesTotals()));
 
     // GuiHeaderRow
-    emscripten::val jsGuiHeaderRow = emscripten::val::array();
-    const auto &headerRow = solver.getGuiHeaderRow();
-    for (size_t i = 0; i < headerRow.size(); ++i)
-    {
-        jsGuiHeaderRow.set(i, headerRow[i]);
-    }
-    jsResult.set("headerRow", jsGuiHeaderRow);
+    jsResult.set("headerRow", vecToJS(solver.getGuiHeaderRow()));
 
     // GuiPivotCols
-    emscripten::val jsGuiPivotCols = emscripten::val::array();
-    const auto &pivotCols = solver.getGuiPivotCols();
-    for (size_t i = 0; i < pivotCols.size(); ++i)
-    {
-        jsGuiPivotCols.set(i, pivotCols[i]);
-    }
-    jsResult.set("pivotCols", jsGuiPivotCols);
+    jsResult.set("pivotCols", vecToJS(solver.getGuiPivotCols()));
 
     // GuiPivotRows
-    emscripten::val jsGuiPivotRows = emscripten::val::array();
-    const auto &pivotRows = solver.getGuiPivotRows();
-    for (size_t i = 0; i < pivotRows.size(); ++i)
-    {
-        jsGuiPivotRows.set(i, pivotRows[i]);
-    }
-    jsResult.set("pivotRows", jsGuiPivotRows);
+    jsResult.set("pivotRows", vecToJS(solver.getGuiPivotRows()));
 
     return jsResult;
 }
@@ -373,157 +321,49 @@ emscripten::val runGoalPreemptiveSimplex(
     emscripten::val jsConstraints,
     emscripten::val jsOrderOverride = emscripten::val::array())
 {
-    // Convert JS arrays to C++ vectors
-    std::vector<std::vector<double>> goals;
-    for (unsigned i = 0; i < jsGoalConstraints["length"].as<unsigned>(); ++i)
-    {
-        std::vector<double> row;
-        emscripten::val jsRow = jsGoalConstraints[i];
-        for (unsigned j = 0; j < jsRow["length"].as<unsigned>(); ++j)
-        {
-            row.push_back(jsRow[j].as<double>());
-        }
-        goals.push_back(row);
-    }
-
-    std::vector<std::vector<double>> constraints;
-    for (unsigned i = 0; i < jsConstraints["length"].as<unsigned>(); ++i)
-    {
-        std::vector<double> row;
-        emscripten::val jsRow = jsConstraints[i];
-        for (unsigned j = 0; j < jsRow["length"].as<unsigned>(); ++j)
-        {
-            row.push_back(jsRow[j].as<double>());
-        }
-        constraints.push_back(row);
-    }
-
-    std::vector<int> orderOverride;
-    if (!jsOrderOverride.isUndefined() && jsOrderOverride["length"].as<unsigned>() > 0)
-    {
-        for (unsigned i = 0; i < jsOrderOverride["length"].as<unsigned>(); ++i)
-        {
-            orderOverride.push_back(jsOrderOverride[i].as<int>());
-        }
-    }
+    auto goals = jsToVecVecDouble(jsGoalConstraints);
+    auto constraints = jsToVecVecDouble(jsConstraints);
+    auto orderOverride = jsToVecInt(jsOrderOverride);
 
     // Solve
     GoalPreemptiveSimplex solver(verbose);
-    auto blank = solver.doPreemptive(goals, constraints, orderOverride);
+    solver.doPreemptive(goals, constraints, orderOverride);
 
     // Build JS object using getters
     emscripten::val jsResult = emscripten::val::object();
 
     // Tableaus
-    emscripten::val jsTableaus = emscripten::val::array();
-    const auto &tableaus = solver.getTableaus();
-    for (size_t t = 0; t < tableaus.size(); ++t)
-    {
-        emscripten::val tbl = emscripten::val::array();
-        for (size_t r = 0; r < tableaus[t].size(); ++r)
-        {
-            emscripten::val row = emscripten::val::array();
-            for (size_t c = 0; c < tableaus[t][r].size(); ++c)
-            {
-                row.set(c, tableaus[t][r][c]);
-            }
-            tbl.set(r, row);
-        }
-        jsTableaus.set(t, tbl);
-    }
-    jsResult.set("tableaus", jsTableaus);
+    jsResult.set("tableaus", vecVecVecToJS(solver.getTableaus()));
 
     // GoalMetStrings
-    emscripten::val jsGoalMetStrings = emscripten::val::array();
-    const auto &gms = solver.getGoalMetStrings();
-    for (size_t i = 0; i < gms.size(); ++i)
-    {
-        emscripten::val row = emscripten::val::array();
-        for (size_t j = 0; j < gms[i].size(); ++j)
-        {
-            row.set(j, gms[i][j]);
-        }
-        jsGoalMetStrings.set(i, row);
-    }
-    jsResult.set("goalMetStrings", jsGoalMetStrings);
+    jsResult.set("goalMetStrings", vecVecToJS(solver.getGoalMetStrings()));
 
     // opTable
     jsResult.set("opTable", solver.getOpTable());
 
     // GuiHeaderRow
-    emscripten::val jsGuiHeaderRow = emscripten::val::array();
-    const auto &headerRow = solver.getGuiHeaderRow();
-    for (size_t i = 0; i < headerRow.size(); ++i)
-    {
-        jsGuiHeaderRow.set(i, headerRow[i]);
-    }
-    jsResult.set("headerRow", jsGuiHeaderRow);
+    jsResult.set("headerRow", vecToJS(solver.getGuiHeaderRow()));
 
     // GuiPivotCols
-    emscripten::val jsGuiPivotCols = emscripten::val::array();
-    const auto &pivotCols = solver.getGuiPivotCols();
-    for (size_t i = 0; i < pivotCols.size(); ++i)
-    {
-        jsGuiPivotCols.set(i, pivotCols[i]);
-    }
-    jsResult.set("pivotCols", jsGuiPivotCols);
+    jsResult.set("pivotCols", vecToJS(solver.getGuiPivotCols()));
 
     // GuiPivotRows
-    emscripten::val jsGuiPivotRows = emscripten::val::array();
-    const auto &pivotRows = solver.getGuiPivotRows();
-    for (size_t i = 0; i < pivotRows.size(); ++i)
-    {
-        jsGuiPivotRows.set(i, pivotRows[i]);
-    }
-    jsResult.set("pivotRows", jsGuiPivotRows);
+    jsResult.set("pivotRows", vecToJS(solver.getGuiPivotRows()));
 
     return jsResult;
 }
 
 emscripten::val runMathPreliminaries(emscripten::val objFunc, emscripten::val jsConstraints, emscripten::val jsIsMin, emscripten::val jsCurrentDeltaSelection, emscripten::val jsAbsRule, emscripten::val jsOptTabLockState, emscripten::val jsSolveDelta, emscripten::val jsValue)
 {
-    // Convert 1D array -> std::vector<double>
-    std::vector<double> objFuncDouble;
-    if (!objFunc.isUndefined() && !objFunc.isNull())
-    {
-        unsigned len = objFunc["length"].as<unsigned>();
-        objFuncDouble.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            objFuncDouble.push_back(objFunc[i].as<double>());
-        }
-    }
-
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> constraintsDouble;
-    if (!jsConstraints.isUndefined() && !jsConstraints.isNull())
-    {
-        unsigned rows = jsConstraints["length"].as<unsigned>();
-        constraintsDouble.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsConstraints[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            constraintsDouble.push_back(rowVec);
-        }
-    }
+    auto objFuncDouble = jsToVecDouble(objFunc);
+    auto constraintsDouble = jsToVecVecDouble(jsConstraints);
 
     // Scalars with defaults
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
-    std::string currentDeltaSelection =
-        (!jsCurrentDeltaSelection.isUndefined() && !jsCurrentDeltaSelection.isNull())
-            ? jsCurrentDeltaSelection.as<std::string>()
-            : "dStore0";
-    bool absRule = (!jsAbsRule.isUndefined() && !jsAbsRule.isNull()) ? jsAbsRule.as<bool>() : false;
-    bool optTabLockState = (!jsOptTabLockState.isUndefined() && !jsOptTabLockState.isNull()) ? jsOptTabLockState.as<bool>() : false;
-    bool solveDelta = (!jsSolveDelta.isUndefined() && !jsSolveDelta.isNull()) ? jsSolveDelta.as<bool>() : false;
-
+    bool isMin = jsIsMin.as<bool>();
+    std::string currentDeltaSelection = jsCurrentDeltaSelection.as<std::string>();
+    bool absRule = jsAbsRule.as<bool>();
+    bool optTabLockState = jsOptTabLockState.as<bool>();
+    bool solveDelta = jsSolveDelta.as<bool>();
     double doubleValue = jsValue.as<double>();
 
     MathPreliminaries mathPreliminaries(verbose);
@@ -531,119 +371,32 @@ emscripten::val runMathPreliminaries(emscripten::val objFunc, emscripten::val js
 
     emscripten::val jsResult = emscripten::val::object();
 
-    // Helper: convert vector<string> -> JS Array
-    auto vecStrToJS = [](const std::vector<std::string> &vec)
-    {
-        emscripten::val arr = emscripten::val::array();
-        for (size_t i = 0; i < vec.size(); ++i)
-        {
-            arr.set(i, vec[i]);
-        }
-        return arr;
-    };
+    jsResult.set("cbv", vecToJS(mathPreliminaries.getMatrixCbv()));
+    jsResult.set("B", vecVecToJS(mathPreliminaries.getMatrixB()));
+    jsResult.set("BInv", vecVecToJS(mathPreliminaries.getMatrixBNegOne()));
+    jsResult.set("cbvBInv", vecToJS(mathPreliminaries.getMatrixCbvNegOne()));
 
-    // Helper: convert vector<vector<string>> -> JS 2D Array
-    auto vecVecStrToJS = [&](const std::vector<std::vector<std::string>> &mat)
-    {
-        emscripten::val arr = emscripten::val::array();
-        for (size_t r = 0; r < mat.size(); ++r)
-        {
-            arr.set(r, vecStrToJS(mat[r]));
-        }
-        return arr;
-    };
+    jsResult.set("initialTable", vecVecToJS(mathPreliminaries.GetInitialTable()));
+    jsResult.set("changingTable", vecVecToJS(mathPreliminaries.GetChangingTable()));
+    jsResult.set("optimalTable", vecVecToJS(mathPreliminaries.GetOptimalTable()));
 
-    // Helper: vector<int> -> JS Array
-    auto vecIntToJS = [](const std::vector<int> &vec)
-    {
-        emscripten::val arr = emscripten::val::array();
-        for (size_t i = 0; i < vec.size(); ++i)
-        {
-            arr.set(i, vec[i]);
-        }
-        return arr;
-    };
-
-    // Helper: vector<vector<vector<double>>> -> JS 3D Array
-    auto vec3DDoubleToJS = [](const std::vector<std::vector<std::vector<double>>> &tensor)
-    {
-        emscripten::val arr = emscripten::val::array();
-        for (size_t i = 0; i < tensor.size(); ++i)
-        {
-            emscripten::val mat = emscripten::val::array();
-            for (size_t j = 0; j < tensor[i].size(); ++j)
-            {
-                emscripten::val row = emscripten::val::array();
-                for (size_t k = 0; k < tensor[i][j].size(); ++k)
-                {
-                    row.set(k, tensor[i][j][k]);
-                }
-                mat.set(j, row);
-            }
-            arr.set(i, mat);
-        }
-        return arr;
-    };
-
-    jsResult.set("cbv", vecStrToJS(mathPreliminaries.getMatrixCbv()));           // 1D
-    jsResult.set("B", vecVecStrToJS(mathPreliminaries.getMatrixB()));            // 2D
-    jsResult.set("BInv", vecVecStrToJS(mathPreliminaries.getMatrixBNegOne()));   // 2D
-    jsResult.set("cbvBInv", vecStrToJS(mathPreliminaries.getMatrixCbvNegOne())); // 1D
-
-    jsResult.set("initialTable", vecVecStrToJS(mathPreliminaries.GetInitialTable()));
-    jsResult.set("changingTable", vecVecStrToJS(mathPreliminaries.GetChangingTable()));
-    jsResult.set("optimalTable", vecVecStrToJS(mathPreliminaries.GetOptimalTable()));
-
-    jsResult.set("headerRow", vecStrToJS(mathPreliminaries.getHeaderRow()));
+    jsResult.set("headerRow", vecToJS(mathPreliminaries.getHeaderRow()));
 
     jsResult.set("shouldReOptimize", mathPreliminaries.getShouldReOptimize());
-    jsResult.set("pivotCols", vecIntToJS(mathPreliminaries.getPivotCols()));
-    jsResult.set("pivotRows", vecIntToJS(mathPreliminaries.getPivotRows()));
-    jsResult.set("reOptTableaus", vec3DDoubleToJS(mathPreliminaries.getReOptTableaus()));
+    jsResult.set("pivotCols", vecToJS(mathPreliminaries.getPivotCols()));
+    jsResult.set("pivotRows", vecToJS(mathPreliminaries.getPivotRows()));
+    jsResult.set("reOptTableaus", vecVecVecToJS(mathPreliminaries.getReOptTableaus()));
 
     return jsResult;
 }
 
 emscripten::val runSensitivityAnalysis(emscripten::val objFunc, emscripten::val jsConstraints, emscripten::val jsIsMin, emscripten::val jsCurrentDeltaSelection)
 {
-    // Convert 1D array -> std::vector<double>
-    std::vector<double> objFuncDouble;
-    if (!objFunc.isUndefined() && !objFunc.isNull())
-    {
-        unsigned len = objFunc["length"].as<unsigned>();
-        objFuncDouble.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            objFuncDouble.push_back(objFunc[i].as<double>());
-        }
-    }
+    auto objFuncDouble = jsToVecDouble(objFunc);
+    auto constraintsDouble = jsToVecVecDouble(jsConstraints);
 
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> constraintsDouble;
-    if (!jsConstraints.isUndefined() && !jsConstraints.isNull())
-    {
-        unsigned rows = jsConstraints["length"].as<unsigned>();
-        constraintsDouble.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsConstraints[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            constraintsDouble.push_back(rowVec);
-        }
-    }
-
-    // Scalars with defaults
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
-    std::string currentDeltaSelection =
-        (!jsCurrentDeltaSelection.isUndefined() && !jsCurrentDeltaSelection.isNull())
-            ? jsCurrentDeltaSelection.as<std::string>()
-            : "dStore0";
+    bool isMin = jsIsMin.as<bool>();
+    std::string currentDeltaSelection = jsCurrentDeltaSelection.as<std::string>();
 
     SensitivityAnalysis sensitivityAnalysis(verbose);
     sensitivityAnalysis.doSensitivityAnalysisDouble(objFuncDouble, constraintsDouble, isMin, currentDeltaSelection);
@@ -657,39 +410,10 @@ emscripten::val runSensitivityAnalysis(emscripten::val objFunc, emscripten::val 
 
 emscripten::val runDuality(emscripten::val objFunc, emscripten::val jsConstraints, emscripten::val jsIsMin)
 {
-    // Convert 1D array -> std::vector<double>
-    std::vector<double> objFuncDouble;
-    if (!objFunc.isUndefined() && !objFunc.isNull())
-    {
-        unsigned len = objFunc["length"].as<unsigned>();
-        objFuncDouble.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            objFuncDouble.push_back(objFunc[i].as<double>());
-        }
-    }
+    auto objFuncDouble = jsToVecDouble(objFunc);
+    auto constraintsDouble = jsToVecVecDouble(jsConstraints);
 
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> constraintsDouble;
-    if (!jsConstraints.isUndefined() && !jsConstraints.isNull())
-    {
-        unsigned rows = jsConstraints["length"].as<unsigned>();
-        constraintsDouble.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsConstraints[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            constraintsDouble.push_back(rowVec);
-        }
-    }
-
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+    bool isMin = jsIsMin.as<bool>();
 
     Duality duality(verbose);
 
@@ -704,45 +428,10 @@ emscripten::val runDuality(emscripten::val objFunc, emscripten::val jsConstraint
 
 emscripten::val runDEA(emscripten::val jsLpInputs, emscripten::val jsLpOutputs, emscripten::val jsIsMin)
 {
-    std::vector<std::vector<double>> LpInputs;
-    if (!jsLpInputs.isUndefined() && !jsLpInputs.isNull())
-    {
-        unsigned rows = jsLpInputs["length"].as<unsigned>();
-        LpInputs.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsLpInputs[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            LpInputs.push_back(rowVec);
-        }
-    }
+    auto LpInputs = jsToVecVecDouble(jsLpInputs);
+    auto LpOutputs = jsToVecVecDouble(jsLpOutputs);
 
-    std::vector<std::vector<double>> LpOutputs;
-    if (!jsLpOutputs.isUndefined() && !jsLpOutputs.isNull())
-    {
-        unsigned rows = jsLpOutputs["length"].as<unsigned>();
-        LpOutputs.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsLpOutputs[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            LpOutputs.push_back(rowVec);
-        }
-    }
-
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+    bool isMin = jsIsMin.as<bool>();
 
     DEASolver dea(verbose);
 
@@ -766,50 +455,11 @@ emscripten::val runDEA(emscripten::val jsLpInputs, emscripten::val jsLpOutputs, 
 
 emscripten::val runAddActivity(emscripten::val objFunc, emscripten::val jsConstraints, emscripten::val jsIsMin, emscripten::val jsNewActivity)
 {
-    // Convert 1D array -> std::vector<double>
-    std::vector<double> objFuncDouble;
-    if (!objFunc.isUndefined() && !objFunc.isNull())
-    {
-        unsigned len = objFunc["length"].as<unsigned>();
-        objFuncDouble.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            objFuncDouble.push_back(objFunc[i].as<double>());
-        }
-    }
+    auto objFuncDouble = jsToVecDouble(objFunc);
+    auto constraintsDouble = jsToVecVecDouble(jsConstraints);
+    auto newActivity = jsToVecDouble(jsNewActivity);
 
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> constraintsDouble;
-    if (!jsConstraints.isUndefined() && !jsConstraints.isNull())
-    {
-        unsigned rows = jsConstraints["length"].as<unsigned>();
-        constraintsDouble.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsConstraints[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            constraintsDouble.push_back(rowVec);
-        }
-    }
-
-    std::vector<double> newActivity;
-    if (!jsNewActivity.isUndefined() && !jsNewActivity.isNull())
-    {
-        unsigned len = jsNewActivity["length"].as<unsigned>();
-        newActivity.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            newActivity.push_back(jsNewActivity[i].as<double>());
-        }
-    }
-
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+    bool isMin = jsIsMin.as<bool>();
 
     AddingActivitiesAndConstraints addingActivitiesAndConstraints(verbose);
 
@@ -817,112 +467,22 @@ emscripten::val runAddActivity(emscripten::val objFunc, emscripten::val jsConstr
 
     emscripten::val jsResult = emscripten::val::object();
 
-    auto vec3DDoubleToJS = [](const std::vector<std::vector<std::vector<double>>> &tensor)
-    {
-        emscripten::val arr = emscripten::val::array();
-        for (size_t i = 0; i < tensor.size(); ++i)
-        {
-            emscripten::val mat = emscripten::val::array();
-            for (size_t j = 0; j < tensor[i].size(); ++j)
-            {
-                emscripten::val row = emscripten::val::array();
-                for (size_t k = 0; k < tensor[i][j].size(); ++k)
-                {
-                    row.set(k, tensor[i][j][k]);
-                }
-                mat.set(j, row);
-            }
-            arr.set(i, mat);
-        }
-        return arr;
-    };
-
-    auto vecDoubleToJS = [](const std::vector<double> &vec)
-    {
-        emscripten::val arr = emscripten::val::array();
-        for (size_t i = 0; i < vec.size(); ++i)
-        {
-            arr.set(i, vec[i]);
-        }
-        return arr;
-    };
-
-    auto vecIntToJS = [](const std::vector<int> &vec)
-    {
-        emscripten::val arr = emscripten::val::array();
-        for (size_t i = 0; i < vec.size(); ++i)
-        {
-            arr.set(i, vec[i]);
-        }
-        return arr;
-    };
-
-    jsResult.set("actCol", vecDoubleToJS(addingActivitiesAndConstraints.getNewActivitysCol()));
-    jsResult.set("OptTabs", vec3DDoubleToJS(addingActivitiesAndConstraints.getSolvedTabs()));
-    jsResult.set("newOptTabs", vec3DDoubleToJS(addingActivitiesAndConstraints.getNewOptTabs()));
-    jsResult.set("pivotRows", vecIntToJS(addingActivitiesAndConstraints.getPivotRows()));
-    jsResult.set("pivotCols", vecIntToJS(addingActivitiesAndConstraints.getPivotCols()));
-
-    // jsResult.set("OptTabs", vec3DDoubleToJS(std::vector<std::vector<std::vector<double>>>{addingActivitiesAndConstraints.getNewActivitysCol().begin(), addingActivitiesAndConstraints.getNewActivitysCol().end()}));
-    // jsResult.set("newOptTabs", vec3DDoubleToJS(std::vector<std::vector<std::vector<double>>>{addingActivitiesAndConstraints.getNewActivitysCol().begin(), addingActivitiesAndConstraints.getNewActivitysCol().end()}));
+    jsResult.set("actCol", vecToJS(addingActivitiesAndConstraints.getNewActivitysCol()));
+    jsResult.set("OptTabs", vecVecVecToJS(addingActivitiesAndConstraints.getSolvedTabs()));
+    jsResult.set("newOptTabs", vecVecVecToJS(addingActivitiesAndConstraints.getNewOptTabs()));
+    jsResult.set("pivotRows", vecToJS(addingActivitiesAndConstraints.getPivotRows()));
+    jsResult.set("pivotCols", vecToJS(addingActivitiesAndConstraints.getPivotCols()));
 
     return jsResult;
 }
 
 emscripten::val runAddConstraints(emscripten::val objFunc, emscripten::val jsConstraints, emscripten::val jsIsMin, emscripten::val jsNewConstraints)
 {
-    // Convert 1D array -> std::vector<double>
-    std::vector<double> objFuncDouble;
-    if (!objFunc.isUndefined() && !objFunc.isNull())
-    {
-        unsigned len = objFunc["length"].as<unsigned>();
-        objFuncDouble.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            objFuncDouble.push_back(objFunc[i].as<double>());
-        }
-    }
+    auto objFuncDouble = jsToVecDouble(objFunc);
+    auto constraintsDouble = jsToVecVecDouble(jsConstraints);
+    auto newConstraints = jsToVecVecDouble(jsNewConstraints);
 
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> constraintsDouble;
-    if (!jsConstraints.isUndefined() && !jsConstraints.isNull())
-    {
-        unsigned rows = jsConstraints["length"].as<unsigned>();
-        constraintsDouble.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsConstraints[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            constraintsDouble.push_back(rowVec);
-        }
-    }
-
-    std::vector<std::vector<double>> newConstraints;
-    if (!jsNewConstraints.isUndefined() && !jsNewConstraints.isNull())
-    {
-        unsigned rows = jsNewConstraints["length"].as<unsigned>();
-        newConstraints.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsNewConstraints[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            newConstraints.push_back(rowVec);
-        }
-    }
-
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+    bool isMin = jsIsMin.as<bool>();
 
     AddingActivitiesAndConstraints addingActivitiesAndConstraints(verbose);
 
@@ -930,83 +490,18 @@ emscripten::val runAddConstraints(emscripten::val objFunc, emscripten::val jsCon
 
     emscripten::val jsResult = emscripten::val::object();
 
-    auto vec3DDoubleToJS = [](const std::vector<std::vector<std::vector<double>>> &tensor)
-    {
-        emscripten::val arr = emscripten::val::array();
-        for (size_t i = 0; i < tensor.size(); ++i)
-        {
-            emscripten::val mat = emscripten::val::array();
-            for (size_t j = 0; j < tensor[i].size(); ++j)
-            {
-                emscripten::val row = emscripten::val::array();
-                for (size_t k = 0; k < tensor[i][j].size(); ++k)
-                {
-                    row.set(k, tensor[i][j][k]);
-                }
-                mat.set(j, row);
-            }
-            arr.set(i, mat);
-        }
-        return arr;
-    };
-
-    auto vecIntToJS = [](const std::vector<int> &vec)
-    {
-        emscripten::val arr = emscripten::val::array();
-        for (size_t i = 0; i < vec.size(); ++i)
-        {
-            arr.set(i, vec[i]);
-        }
-        return arr;
-    };
-
-    // jsResult.set("OptTabs", vec3DDoubleToJS(addingActivitiesAndConstraints.getNewActivitysCol()));
-    // jsResult.set("newOptTabs", vec3DDoubleToJS(addingActivitiesAndConstraints.getNewActivitysCol()));
-
-    jsResult.set("OptTabs", vec3DDoubleToJS(addingActivitiesAndConstraints.getSolvedTabs()));
-    jsResult.set("newOptTabs", vec3DDoubleToJS(addingActivitiesAndConstraints.getNewOptTabs()));
-    jsResult.set("pivotRows", vecIntToJS(addingActivitiesAndConstraints.getPivotRows()));
-    jsResult.set("pivotCols", vecIntToJS(addingActivitiesAndConstraints.getPivotCols()));
+    jsResult.set("OptTabs", vecVecVecToJS(addingActivitiesAndConstraints.getSolvedTabs()));
+    jsResult.set("newOptTabs", vecVecVecToJS(addingActivitiesAndConstraints.getNewOptTabs()));
+    jsResult.set("pivotRows", vecToJS(addingActivitiesAndConstraints.getPivotRows()));
+    jsResult.set("pivotCols", vecToJS(addingActivitiesAndConstraints.getPivotCols()));
 
     return jsResult;
 }
 
-// emscripten::val runKnapsack(emscripten::val objFunc, emscripten::val jsConstraints, emscripten::val jsIsMin)
 emscripten::val runKnapsack(emscripten::val objFunc, emscripten::val jsConstraints)
 {
-    // Convert 1D array -> std::vector<double>
-    std::vector<double> objFuncDouble;
-    if (!objFunc.isUndefined() && !objFunc.isNull())
-    {
-        unsigned len = objFunc["length"].as<unsigned>();
-        objFuncDouble.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            objFuncDouble.push_back(objFunc[i].as<double>());
-        }
-    }
-
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> constraintsDouble;
-    if (!jsConstraints.isUndefined() && !jsConstraints.isNull())
-    {
-        unsigned rows = jsConstraints["length"].as<unsigned>();
-        constraintsDouble.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsConstraints[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            constraintsDouble.push_back(rowVec);
-        }
-    }
-
-    // bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+    auto objFuncDouble = jsToVecDouble(objFunc);
+    auto constraintsDouble = jsToVecVecDouble(jsConstraints);
 
     KnapSack knapsack(verbose);
 
@@ -1023,39 +518,10 @@ emscripten::val runKnapsack(emscripten::val objFunc, emscripten::val jsConstrain
 
 emscripten::val runBranchAndBound(emscripten::val objFunc, emscripten::val jsConstraints, emscripten::val jsIsMin)
 {
-    // Convert 1D array -> std::vector<double>
-    std::vector<double> objFuncDouble;
-    if (!objFunc.isUndefined() && !objFunc.isNull())
-    {
-        unsigned len = objFunc["length"].as<unsigned>();
-        objFuncDouble.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            objFuncDouble.push_back(objFunc[i].as<double>());
-        }
-    }
+    auto objFuncDouble = jsToVecDouble(objFunc);
+    auto constraintsDouble = jsToVecVecDouble(jsConstraints);
 
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> constraintsDouble;
-    if (!jsConstraints.isUndefined() && !jsConstraints.isNull())
-    {
-        unsigned rows = jsConstraints["length"].as<unsigned>();
-        constraintsDouble.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsConstraints[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            constraintsDouble.push_back(rowVec);
-        }
-    }
-
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+    bool isMin = jsIsMin.as<bool>();
 
     BranchAndBound branchAndBound(verbose);
 
@@ -1071,39 +537,10 @@ emscripten::val runBranchAndBound(emscripten::val objFunc, emscripten::val jsCon
 
 emscripten::val runCuttingPlane(emscripten::val objFunc, emscripten::val jsConstraints, emscripten::val jsIsMin)
 {
-    // Convert 1D array -> std::vector<double>
-    std::vector<double> objFuncDouble;
-    if (!objFunc.isUndefined() && !objFunc.isNull())
-    {
-        unsigned len = objFunc["length"].as<unsigned>();
-        objFuncDouble.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            objFuncDouble.push_back(objFunc[i].as<double>());
-        }
-    }
+    auto objFuncDouble = jsToVecDouble(objFunc);
+    auto constraintsDouble = jsToVecVecDouble(jsConstraints);
 
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> constraintsDouble;
-    if (!jsConstraints.isUndefined() && !jsConstraints.isNull())
-    {
-        unsigned rows = jsConstraints["length"].as<unsigned>();
-        constraintsDouble.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsConstraints[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            constraintsDouble.push_back(rowVec);
-        }
-    }
-
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+    bool isMin = jsIsMin.as<bool>();
 
     CuttingPlane cuttingPlane(verbose);
 
@@ -1118,28 +555,9 @@ emscripten::val runCuttingPlane(emscripten::val objFunc, emscripten::val jsConst
 
 emscripten::val runCheapestInsertion(emscripten::val jsDistanceMatrix, emscripten::val jsStartCity)
 {
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> distanceMatrix;
-    if (!jsDistanceMatrix.isUndefined() && !jsDistanceMatrix.isNull())
-    {
-        unsigned rows = jsDistanceMatrix["length"].as<unsigned>();
-        distanceMatrix.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsDistanceMatrix[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            distanceMatrix.push_back(rowVec);
-        }
-    }
+    auto distanceMatrix = jsToVecVecDouble(jsDistanceMatrix);
 
     int startCity = jsStartCity.as<int>();
-    // int startCity = -1;
 
     CheapestInsertion cheapestInsertion(verbose);
 
@@ -1154,28 +572,9 @@ emscripten::val runCheapestInsertion(emscripten::val jsDistanceMatrix, emscripte
 
 emscripten::val runNearestNeighbor(emscripten::val jsDistanceMatrix, emscripten::val jsStartCity)
 {
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> distanceMatrix;
-    if (!jsDistanceMatrix.isUndefined() && !jsDistanceMatrix.isNull())
-    {
-        unsigned rows = jsDistanceMatrix["length"].as<unsigned>();
-        distanceMatrix.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsDistanceMatrix[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            distanceMatrix.push_back(rowVec);
-        }
-    }
+    auto distanceMatrix = jsToVecVecDouble(jsDistanceMatrix);
 
     int startCity = jsStartCity.as<int>();
-    // int startCity = -1;
 
     NearestNeighbour nearestNeighbour(verbose);
 
@@ -1190,29 +589,11 @@ emscripten::val runNearestNeighbor(emscripten::val jsDistanceMatrix, emscripten:
 
 emscripten::val runHungarianAlgorithm(emscripten::val jsCostMatrixWithBlanks, emscripten::val jsMaximize, emscripten::val jsBlankValue, emscripten::val jsHasBlankValue)
 {
-    // Convert 2D array -> std::vector<std::vector<double>>
-    std::vector<std::vector<double>> costMatrixWithBlanks;
-    if (!jsCostMatrixWithBlanks.isUndefined() && !jsCostMatrixWithBlanks.isNull())
-    {
-        unsigned rows = jsCostMatrixWithBlanks["length"].as<unsigned>();
-        costMatrixWithBlanks.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsCostMatrixWithBlanks[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            costMatrixWithBlanks.push_back(rowVec);
-        }
-    }
+    auto costMatrixWithBlanks = jsToVecVecDouble(jsCostMatrixWithBlanks);
 
-    bool maximize = (!jsMaximize.isUndefined() && !jsMaximize.isNull()) ? jsMaximize.as<bool>() : false;
-    double blankValue = (!jsBlankValue.isUndefined() && !jsBlankValue.isNull()) ? jsBlankValue.as<double>() : -999.0;
-    bool hasBlankValue = (!jsHasBlankValue.isUndefined() && !jsHasBlankValue.isNull()) ? jsHasBlankValue.as<bool>() : false;
+    bool maximize = jsMaximize.as<bool>();
+    double blankValue = jsBlankValue.as<double>();
+    bool hasBlankValue = jsHasBlankValue.as<bool>();
 
     Hungarian hungarian(verbose);
 
@@ -1227,24 +608,7 @@ emscripten::val runHungarianAlgorithm(emscripten::val jsCostMatrixWithBlanks, em
 
 emscripten::val runMachineSchedulingTardinessScheduler(emscripten::val jsJobData)
 {
-    std::vector<std::vector<double>> jobData;
-    if (!jsJobData.isUndefined() && !jsJobData.isNull())
-    {
-        unsigned rows = jsJobData["length"].as<unsigned>();
-        jobData.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsJobData[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            jobData.push_back(rowVec);
-        }
-    }
+    auto jobData = jsToVecVecDouble(jsJobData);
 
     MachineSchedulingTardiness solver(verbose);
 
@@ -1259,35 +623,8 @@ emscripten::val runMachineSchedulingTardinessScheduler(emscripten::val jsJobData
 
 emscripten::val runMachineSchedulingPenaltyScheduler(emscripten::val jsJobData, emscripten::val jsPenalty)
 {
-    std::vector<std::vector<double>> jobData;
-    if (!jsJobData.isUndefined() && !jsJobData.isNull())
-    {
-        unsigned rows = jsJobData["length"].as<unsigned>();
-        jobData.reserve(rows);
-        for (unsigned r = 0; r < rows; ++r)
-        {
-            emscripten::val row = jsJobData[r];
-            unsigned cols = row["length"].as<unsigned>();
-            std::vector<double> rowVec;
-            rowVec.reserve(cols);
-            for (unsigned c = 0; c < cols; ++c)
-            {
-                rowVec.push_back(row[c].as<double>());
-            }
-            jobData.push_back(rowVec);
-        }
-    }
-
-    std::vector<double> penalty;
-    if (!jsPenalty.isUndefined() && !jsPenalty.isNull())
-    {
-        unsigned len = jsPenalty["length"].as<unsigned>();
-        penalty.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            penalty.push_back(jsPenalty[i].as<double>());
-        }
-    }
+    auto jobData = jsToVecVecDouble(jsJobData);
+    auto penalty = jsToVecDouble(jsPenalty);
 
     MachineSchedulingPenalty solver(verbose);
 
@@ -1306,18 +643,10 @@ emscripten::val runGoldenSectionSearch(emscripten::val jsFunction, emscripten::v
     double xLower = jsXLower.as<double>();
     double xUpper = jsXUpper.as<double>();
     double tol = jsTol.as<double>();
-
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
-
-    // std::cout << "Function: " << function << std::endl;
-    // std::cout << "Lower Bound: " << xLower << std::endl;
-    // std::cout << "Upper Bound: " << xUpper << std::endl;
-    // std::cout << "Tolerance: " << tol << std::endl;
-    // std::cout << "Minimize: " << isMin << std::endl;
+    bool isMin = jsIsMin.as<bool>();
 
     GoldenSectionSearch solver(verbose);
 
-    // solver.DoGoldenRatioSearch(const std::string &func, double xLower, double xUpper, double tol, bool findMin = false)
     solver.DoGoldenRatioSearch(function, xLower, xUpper, tol, isMin);
 
     emscripten::val jsResult = emscripten::val::object();
@@ -1330,30 +659,9 @@ emscripten::val runGoldenSectionSearch(emscripten::val jsFunction, emscripten::v
 emscripten::val runSteepestDescent(emscripten::val jsFunction, emscripten::val jsVars, emscripten::val jsPoints, emscripten::val jsIsMin)
 {
     std::string function = jsFunction.as<std::string>();
-
-    std::vector<std::string> vars;
-    if (!jsVars.isUndefined() && !jsVars.isNull())
-    {
-        unsigned len = jsVars["length"].as<unsigned>();
-        vars.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            vars.push_back(jsVars[i].as<std::string>());
-        }
-    }
-
-    std::vector<double> points;
-    if (!jsPoints.isUndefined() && !jsPoints.isNull())
-    {
-        unsigned len = jsPoints["length"].as<unsigned>();
-        points.reserve(len);
-        for (unsigned i = 0; i < len; ++i)
-        {
-            points.push_back(jsPoints[i].as<double>());
-        }
-    }
-
-    bool isMin = (!jsIsMin.isUndefined() && !jsIsMin.isNull()) ? jsIsMin.as<bool>() : false;
+    auto vars = jsToVecString(jsVars);
+    auto points = jsToVecDouble(jsPoints);
+    bool isMin = jsIsMin.as<bool>();
 
     SteepestDescent solver(verbose);
     solver.DoSteepestDescent(function, vars, points, isMin);
@@ -1390,16 +698,6 @@ EMSCRIPTEN_BINDINGS(simplex_module)
     emscripten::function("runMachineSchedulingPenaltyScheduler", &runMachineSchedulingPenaltyScheduler);
     emscripten::function("runGoldenSectionSearch", &runGoldenSectionSearch);
     emscripten::function("runSteepestDescent", &runSteepestDescent);
-    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
-    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
-    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
-    // emscripten::function("runGoalPenaltiesSimplex", &runGoalPenaltiesSimplex);
 }
-
-// int main()
-// {
-//     std::cout << "C++ WASM loaded" << std::endl;
-//     return 0;
-// }
 
 #endif
