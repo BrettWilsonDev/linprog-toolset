@@ -1,34 +1,229 @@
 export function render(formContainer, resultsContainer, Module) {
     // Insert HTML
     formContainer.innerHTML = `
-    <h1>Goal Simplex Preemptive</h1>
+            <style>
+        /* Wrapper to center all content */
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            max-width: 1200px; /* Optional: limits width for better readability */
+            margin: 0 auto;
+            padding: 20px;
+        }
 
-    <button class="btn" id="addDecisionVarBtn">Decision Variable +</button>
-    <button class="btn" id="removeDecisionVarBtn">Decision Variable -</button>
+        /* Existing styles */
+        .row {
+            display: flex;
+            gap: 10px; /* Space between buttons */
+            margin-bottom: 15px; /* Space between rows */
+            align-items: center;
+            justify-content: center; /* Center items in the row */
+        }
+        button {
+            background: #333333; /* Dark gray base */
+            color: #FFFFFF;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: background 0.2s ease;
+        }
+        button:hover {
+            background: #CC3300; /* Deep orange on hover */
+            color: #000000;
+        }
+        button#resetButton {
+            background: #1A1A1A; /* Darker gray for distinction */
+        }
+        button#resetButton:hover {
+            background: #992600; /* Darker orange for reset hover */
+        }
+        #form input[type="radio"], #form input[type="number"], #form select {
+            background: #1A1A1A; /* Dark input background */
+            color: #FFFFFF;
+            border: 1px solid #333333;
+            padding: 6px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        /* Custom radio button styling */
+        #form input[type="radio"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333333; /* Border for unchecked state */
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+        }
+        #form input[type="radio"]:checked {
+            border-color: #CC3300; /* Orange border for checked */
+            background: #CC3300; /* Orange fill */
+        }
+        #form input[type="radio"]:checked::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #FFFFFF; /* White inner dot */
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #form input[type="radio"]:hover {
+            border-color: #CC3300; /* Orange border on hover */
+        }
+        #form input[type="radio"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #CC3300; /* Orange focus ring */
+        }
+        #form input[type="number"] {
+            width: 50px; /* Reasonable width for number inputs */
+            -webkit-appearance: none !important; /* Force remove arrows */
+            -moz-appearance: textfield !important; /* Force remove arrows for Firefox */
+            appearance: none !important; /* Force remove arrows */
+        }
+        #form input[type="number"]::-webkit-inner-spin-button,
+        #form input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none !important; /* Force hide arrows in Chrome/Safari */
+            display: none !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+        }
+        #form input[type="number"] {
+            -moz-appearance: textfield !important; /* Reinforce for Firefox */
+        }
+        #form select {
+            width: auto;
+            min-width: 60px;
+        }
+        #form input[type="number"]:focus, #form select:focus {
+            border-color: #CC3300; /* Deep orange border on focus */
+            outline: none;
+        }
+        label {
+            color: #CCCCCC; /* Light gray for labels */
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+        }
+        p {
+            color: #FFFFFF;
+            margin-bottom: 10px;
+            // text-align: center; /* Center paragraphs */
+        }
+        h1, h3, h4 {
+            color: #CC3300; /* Deep orange headings */
+            margin-bottom: 10px;
+            // text-align: center; /* Center headings */
+        }
+        .constraint {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+            justify-content: center; /* Center constraint rows */
+        }
+        #output, #results {
+            background: #1A1A1A;
+            border: 1px solid #333333;
+            padding: 10px;
+            border-radius: 4px;
+            color: #FFFFFF;
+            // text-align: center; /* Center text in output/results */
+        }
+        table {
+            border-collapse: collapse;
+            // border: none;
+            margin-bottom: 15px;
+            // color: #FFFFFF;
+            // margin-left: auto; /* Center table */
+            margin-right: auto;
+        }
+        th, td {
+            border: 1px solid #333333;
+            padding: 6px;
+            text-align: center;
+        }
+        th {
+            background: #1A1A1A;
+            color: #CC3300; /* Deep orange table headers */
+        }
+        .pivot {
+            // background-color: #4CAF50; /* Green for pivot highlighting */
+            background-color: #CC3300; /* Green for pivot highlighting */
+        }
+        @media (max-width: 600px) {
+            .row {
+                flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+                gap: 8px;
+            }
+            button {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+            #form input[type="number"] {
+                width: 40px; /* Reasonable width for mobile */
+            }
+            #form input[type="radio"] {
+                width: 14px;
+                height: 14px;
+            }
+            #form input[type="radio"]:checked::after {
+                width: 7px;
+                height: 7px;
+            }
+        }
 
-    <h3>Goal Constraints</h3>
-    <button style="margin-bottom: 20px;" class="btn" id="addGoalConstraintBtn">Goal Constraint +</button>
-    <button style="margin-bottom: 20px;" class="btn" id="removeGoalConstraintBtn">Goal Constraint -</button>
+        .btn {
+            margin: 5px;
+        }
+    </style>
+
+    <h1 style="margin-top: 60px;" class="row">Goal Simplex Preemptive</h1>
+
+    <div class="row">
+        <button class="btn" id="addDecisionVarBtn">Decision Variable +</button>
+        <button class="btn" id="removeDecisionVarBtn">Decision Variable -</button>
+    </div>
+
+    <h3 class="row">Goal Constraints</h3>
+    <div class="row">
+        <button style="margin-bottom: 20px;" class="btn" id="addGoalConstraintBtn">Goal Constraint +</button>
+        <button style="margin-bottom: 20px;" class="btn" id="removeGoalConstraintBtn">Goal Constraint -</button>
+    </div>
 
     <br>
     <div id="goalConstraintsContainer"></div>
 
-    <h3>Normal Constraints</h3>
-    <button class="btn" id="addConstraintBtn">Constraint +</button>
-    <button class="btn" id="removeConstraintBtn">Constraint -</button>
+    <h3 class="row">Normal Constraints</h3>
+    <div class="row">
+        <button class="btn" id="addConstraintBtn">Constraint +</button>
+        <button class="btn" id="removeConstraintBtn">Constraint -</button>
+    </div>
 
-    <div id="constraintsContainer"></div>
+    <div class="row" id="constraintsContainer"></div>
 
-    <h3>Penalties</h3>
-    <div style="margin-bottom: 20px;" id="penaltiesContainer"></div>
+    <div class="row">
+        <button style="margin-bottom: 20px;" class="btn" id="toggleGoalOrderBtn">Show Goal Order</button>
+    </div>
 
-    <button style="margin-bottom: 20px;" class="btn" id="toggleGoalOrderBtn">Show Goal Order</button>
-
-    <div id="goalOrderContainer" style="display: none;"></div>
+    <div class="row">
+        <div class="row" id="goalOrderContainer" style="display: none;"></div>
+    </div>
 
     <div class="row">
         <button id="solveButton">Solve</button>
-        <button id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
+        <button style="background-color: red;" id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
     </div>
 
     <div id="tableauContainer"></div>
@@ -50,7 +245,7 @@ export function render(formContainer, resultsContainer, Module) {
 
     const goalConstraintsContainer = document.getElementById('goalConstraintsContainer');
     const constraintsContainer = document.getElementById('constraintsContainer');
-    const penaltiesContainer = document.getElementById('penaltiesContainer');
+    // const penaltiesContainer = document.getElementById('penaltiesContainer');
     const goalOrderContainer = document.getElementById('goalOrderContainer');
     const toggleGoalOrderBtn = document.getElementById('toggleGoalOrderBtn');
 
@@ -86,7 +281,7 @@ export function render(formContainer, resultsContainer, Module) {
                 goalConstraints[i][amtOfObjVars + 1] = signItemsChoices[i];
                 if (goalConstraints[i][goalConstraints[i].length - 1] === 2) {
                     penalties.push(0.0);
-                    updatePenalties();
+                    // updatePenalties();
                 }
 
                 let equalCount = 0;
@@ -102,7 +297,7 @@ export function render(formContainer, resultsContainer, Module) {
 
                 if ((equalCount + notEqualCount) != penalties.length) {
                     penalties.pop();
-                    updatePenalties();
+                    // updatePenalties();
                 }
 
             };
@@ -163,26 +358,26 @@ export function render(formContainer, resultsContainer, Module) {
         }
     }
 
-    function updatePenalties() {
-        penaltiesContainer.innerHTML = '';
-        penalties.forEach((penalty, i) => {
-            const div = document.createElement('div');
-            div.className = 'penaltyItem';
+    // function updatePenalties() {
+    //     penaltiesContainer.innerHTML = '';
+    //     penalties.forEach((penalty, i) => {
+    //         const div = document.createElement('div');
+    //         div.className = 'penaltyItem';
 
-            const label = document.createElement('label');
-            label.textContent = `Penalty ${i + 1}`;
-            div.appendChild(label);
+    //         const label = document.createElement('label');
+    //         label.textContent = `Penalty ${i + 1}`;
+    //         div.appendChild(label);
 
-            const input = document.createElement('input');
-            input.className = 'input-field';
-            input.type = 'number';
-            input.value = penalty;
-            input.oninput = (e) => penalties[i] = parseFloat(e.target.value);
-            div.appendChild(input);
+    //         const input = document.createElement('input');
+    //         input.className = 'input-field';
+    //         input.type = 'number';
+    //         input.value = penalty;
+    //         input.oninput = (e) => penalties[i] = parseFloat(e.target.value);
+    //         div.appendChild(input);
 
-            penaltiesContainer.appendChild(div);
-        });
-    }
+    //         penaltiesContainer.appendChild(div);
+    //     });
+    // }
 
     function updateGoalOrder() {
         goalOrderContainer.innerHTML = '';
@@ -246,7 +441,7 @@ export function render(formContainer, resultsContainer, Module) {
         goalOrder.push(goals.length - 1);
         penalties.push(0.0);
         updateGoalConstraints();
-        updatePenalties();
+        // updatePenalties();
         updateGoalOrder();
     };
 
@@ -259,7 +454,7 @@ export function render(formContainer, resultsContainer, Module) {
             goalOrder.pop();
             penalties.pop();
             updateGoalConstraints();
-            updatePenalties();
+            // updatePenalties();
             updateGoalOrder();
         }
     };
@@ -300,27 +495,30 @@ export function render(formContainer, resultsContainer, Module) {
         signItemsChoicesC = [];
         toggle = false;
 
+        resultsContainer.innerHTML = "";
+
         updateGoalConstraints();
-        updatePenalties();
+        // updatePenalties();
         updateConstraints();
     };
 
     function fmt(num, decimals = 6) {
+        if (num === undefined || num === null || isNaN(num)) return "";
         return parseFloat(num.toFixed(decimals));
     }
 
     document.getElementById("solveButton").onclick = () => {
         try {
             // Example input
-            const goals = [
-                [40, 30, 20, 100, 0],
-                [2, 4, 3, 10, 2],
-                [5, 8, 4, 30, 1]
-            ];
+            // const goals = [
+            //     [40, 30, 20, 100, 0],
+            //     [2, 4, 3, 10, 2],
+            //     [5, 8, 4, 30, 1]
+            // ];
 
-            const constraints = [[7, 2, 3, 69, 0],];
-            const goalOrder = [2, 1, 0];
-            const goalConstraints = goals;
+            // const constraints = [[7, 2, 3, 69, 0],];
+            // const goalOrder = [2, 1, 0];
+            // const goalConstraints = goals;
 
             // Call the C++ solver
             const result = Module.runGoalPreemptiveSimplex(goalConstraints, constraints, goalOrder);
@@ -337,17 +535,21 @@ export function render(formContainer, resultsContainer, Module) {
                 if (iter === 0) {
                     html += `<h4>Setup Tableau</h4>`;
                 } else if (iter === result.opTable) {
-                    html += `<h4 style="color: blue;">Optimal Tableau ${iter}</h4>`;
+                    // html += `<h4 style="color: blue;">Optimal Tableau ${iter}</h4>`;
+                    html += `<h4 style="color: yellow;">Optimal Tableau ${iter}</h4>`;
                 } else {
                     html += `<h4>Tableau ${iter}</h4>`;
                 }
 
-                // Render goal status
-                result.goalMetStrings[iter].forEach((metString, idx) => {
-                    if (metString !== " ") {
-                        html += `<h5>Goal ${idx + 1}: ${metString}</h5>`;
-                    }
-                });
+                if (result.goalMetStrings[iter] != undefined) {
+                    // Render goal status
+                    result.goalMetStrings[iter].forEach((metString, idx) => {
+                        if (metString !== " ") {
+                            html += `<h5>Goal ${idx + 1}: ${metString}</h5>`;
+                            html += `<br>`;
+                        }
+                    });
+                }
 
                 // Render tableau table
                 html += `<table border="1" cellpadding="4">`;
@@ -368,7 +570,8 @@ export function render(formContainer, resultsContainer, Module) {
                         let style = "";
                         // Highlight pivot cells
                         if ((result.pivotRows[iter] === rIdx || result.pivotCols[iter] === cIdx) && iter !== 0) {
-                            style = 'style="background-color: lightgreen;"';
+                            // style = 'style="background-color: lightgreen;"';
+                            style = 'style="background-color: #ff8800ff;"';
                         }
 
                         html += `<td ${style}>${fmt(v)}</td>`;
@@ -388,6 +591,6 @@ export function render(formContainer, resultsContainer, Module) {
 
     // ===== INITIAL RENDER =====
     updateGoalConstraints();
-    updatePenalties();
+    // updatePenalties();
     updateConstraints();
 }

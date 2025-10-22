@@ -1,14 +1,195 @@
 export function render(formContainer, resultsContainer, Module) {
     // Insert HTML
     formContainer.innerHTML = `
-    <h1>Linier Programming Duality</h1>
+    <style>
+        /* Wrapper to center all content */
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            max-width: 1200px; /* Optional: limits width for better readability */
+            margin: 0 auto;
+            padding: 20px;
+        }
 
-    <div>
+        /* Existing styles */
+        .row {
+            display: flex;
+            gap: 10px; /* Space between buttons */
+            margin-bottom: 15px; /* Space between rows */
+            align-items: center;
+            justify-content: center; /* Center items in the row */
+        }
+        button {
+            background: #333333; /* Dark gray base */
+            color: #FFFFFF;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: background 0.2s ease;
+        }
+        button:hover {
+            background: #CC3300; /* Deep orange on hover */
+            color: #000000;
+        }
+        button#resetButton {
+            background: #1A1A1A; /* Darker gray for distinction */
+        }
+        button#resetButton:hover {
+            background: #992600; /* Darker orange for reset hover */
+        }
+        #form input[type="radio"], #form input[type="number"], #form select {
+            background: #1A1A1A; /* Dark input background */
+            color: #FFFFFF;
+            border: 1px solid #333333;
+            padding: 6px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        /* Custom radio button styling */
+        #form input[type="radio"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333333; /* Border for unchecked state */
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+        }
+        #form input[type="radio"]:checked {
+            border-color: #CC3300; /* Orange border for checked */
+            background: #CC3300; /* Orange fill */
+        }
+        #form input[type="radio"]:checked::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #FFFFFF; /* White inner dot */
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #form input[type="radio"]:hover {
+            border-color: #CC3300; /* Orange border on hover */
+        }
+        #form input[type="radio"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #CC3300; /* Orange focus ring */
+        }
+        #form input[type="number"] {
+            width: 50px; /* Reasonable width for number inputs */
+            -webkit-appearance: none !important; /* Force remove arrows */
+            -moz-appearance: textfield !important; /* Force remove arrows for Firefox */
+            appearance: none !important; /* Force remove arrows */
+        }
+        #form input[type="number"]::-webkit-inner-spin-button,
+        #form input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none !important; /* Force hide arrows in Chrome/Safari */
+            display: none !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+        }
+        #form input[type="number"] {
+            -moz-appearance: textfield !important; /* Reinforce for Firefox */
+        }
+        #form select {
+            width: auto;
+            min-width: 60px;
+        }
+        #form input[type="number"]:focus, #form select:focus {
+            border-color: #CC3300; /* Deep orange border on focus */
+            outline: none;
+        }
+        label {
+            color: #CCCCCC; /* Light gray for labels */
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+        }
+        p {
+            color: #FFFFFF;
+            margin-bottom: 10px;
+            // text-align: center; /* Center paragraphs */
+        }
+        h1, h3, h4 {
+            color: #CC3300; /* Deep orange headings */
+            margin-bottom: 10px;
+            // text-align: center; /* Center headings */
+        }
+        .constraint {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+            justify-content: center; /* Center constraint rows */
+        }
+        #output, #results {
+            background: #1A1A1A;
+            border: 1px solid #333333;
+            padding: 10px;
+            border-radius: 4px;
+            color: #FFFFFF;
+            // text-align: center; /* Center text in output/results */
+        }
+        table {
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            color: #FFFFFF;
+            // margin-left: auto; /* Center table */
+            margin-right: auto;
+        }
+        // th, td {
+        //     border: 1px solid #333333;
+        //     padding: 6px;
+        //     text-align: center;
+        // }
+        th {
+            background: #1A1A1A;
+            color: #CC3300; /* Deep orange table headers */
+        }
+        .pivot {
+            // background-color: #4CAF50; /* Green for pivot highlighting */
+            background-color: #CC3300; /* Green for pivot highlighting */
+        }
+        @media (max-width: 600px) {
+            .row {
+                flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+                gap: 8px;
+            }
+            button {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+            #form input[type="number"] {
+                width: 40px; /* Reasonable width for mobile */
+            }
+            #form input[type="radio"] {
+                width: 14px;
+                height: 14px;
+            }
+            #form input[type="radio"]:checked::after {
+                width: 7px;
+                height: 7px;
+            }
+        }
+    </style>
+
+    <h1 style="margin-top: 60px;" class="row">Linier Programming Duality</h1>
+
+    <div class="row">
         <label><input type="radio" name="problemType" value="Max" checked> Max</label>
         <label><input type="radio" name="problemType" value="Min"> Min</label>
     </div>
-
-    <p id="problemTypeText">Problem is: Max</p>
 
     <div class="row">
         <button id="addDecisionVar">decision variables +</button>
@@ -27,7 +208,7 @@ export function render(formContainer, resultsContainer, Module) {
 
     <div class="row">
         <button id="solveButton">Solve</button>
-        <button id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
+        <button style="background-color: red;" id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
     </div>
 
     <br>
@@ -43,7 +224,6 @@ export function render(formContainer, resultsContainer, Module) {
 
     function updateProblemType() {
         problemType = document.querySelector('input[name="problemType"]:checked').value;
-        document.getElementById("problemTypeText").innerText = "Problem is: " + problemType;
     }
 
     function updateObjectiveFunction() {
@@ -180,12 +360,12 @@ export function render(formContainer, resultsContainer, Module) {
 
     document.getElementById("solveButton").onclick = () => {
         try {
-            let objFunc = [3.0, 2.0];
-            let constraints = [
-                [2.0, 1.0, 100.0, 0.0],
-                [1.0, 1.0, 80.0, 0.0],
-                [1.0, 0.0, 45.0, 0.0]
-            ];
+            // let objFunc = [3.0, 2.0];
+            // let constraints = [
+            //     [2.0, 1.0, 100.0, 0.0],
+            //     [1.0, 1.0, 80.0, 0.0],
+            //     [1.0, 0.0, 45.0, 0.0]
+            // ];
 
             let isMin = (problemType === "Min");
 

@@ -1,54 +1,232 @@
 export function render(formContainer, resultsContainer, Module) {
-    // Insert HTML
+    // Insert HTML with inline CSS for button layout, form, and radio button styling
     formContainer.innerHTML = `
-    <h1>Adding activities and constraints</h1>
+    <style>
+        /* Wrapper to center all content */
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            max-width: 1200px; /* Optional: limits width for better readability */
+            margin: 0 auto;
+            padding: 20px;
+        }
 
-    <div>
-        <label><input type="radio" name="problemType" value="Max" checked> Max</label>
-        <label><input type="radio" name="problemType" value="Min"> Min</label>
+        /* Existing styles */
+        .row {
+            display: flex;
+            gap: 10px; /* Space between buttons */
+            margin-bottom: 15px; /* Space between rows */
+            align-items: center;
+            justify-content: center; /* Center items in the row */
+        }
+        button {
+            background: #333333; /* Dark gray base */
+            color: #FFFFFF;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: background 0.2s ease;
+        }
+        button:hover {
+            background: #CC3300; /* Deep orange on hover */
+            color: #000000;
+        }
+        button#resetButton {
+            background: #1A1A1A; /* Darker gray for distinction */
+        }
+        button#resetButton:hover {
+            background: #992600; /* Darker orange for reset hover */
+        }
+        #form input[type="radio"], #form input[type="number"], #form select {
+            background: #1A1A1A; /* Dark input background */
+            color: #FFFFFF;
+            border: 1px solid #333333;
+            padding: 6px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        /* Custom radio button styling */
+        #form input[type="radio"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333333; /* Border for unchecked state */
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+        }
+        #form input[type="radio"]:checked {
+            border-color: #CC3300; /* Orange border for checked */
+            background: #CC3300; /* Orange fill */
+        }
+        #form input[type="radio"]:checked::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #FFFFFF; /* White inner dot */
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #form input[type="radio"]:hover {
+            border-color: #CC3300; /* Orange border on hover */
+        }
+        #form input[type="radio"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #CC3300; /* Orange focus ring */
+        }
+        #form input[type="number"] {
+            width: 50px; /* Reasonable width for number inputs */
+            -webkit-appearance: none !important; /* Force remove arrows */
+            -moz-appearance: textfield !important; /* Force remove arrows for Firefox */
+            appearance: none !important; /* Force remove arrows */
+        }
+        #form input[type="number"]::-webkit-inner-spin-button,
+        #form input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none !important; /* Force hide arrows in Chrome/Safari */
+            display: none !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+        }
+        #form input[type="number"] {
+            -moz-appearance: textfield !important; /* Reinforce for Firefox */
+        }
+        #form select {
+            width: auto;
+            min-width: 60px;
+        }
+        #form input[type="number"]:focus, #form select:focus {
+            border-color: #CC3300; /* Deep orange border on focus */
+            outline: none;
+        }
+        label {
+            color: #CCCCCC; /* Light gray for labels */
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+        }
+        p {
+            color: #FFFFFF;
+            margin-bottom: 10px;
+            text-align: center; /* Center paragraphs */
+        }
+        h1, h3, h4 {
+            color: #CC3300; /* Deep orange headings */
+            margin-bottom: 10px;
+            // text-align: center; /* Center headings */
+        }
+        .constraint {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+            justify-content: center; /* Center constraint rows */
+        }
+        #output, #results {
+            background: #1A1A1A;
+            border: 1px solid #333333;
+            padding: 10px;
+            border-radius: 4px;
+            color: #FFFFFF;
+            // text-align: center; /* Center text in output/results */
+        }
+        table {
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            color: #FFFFFF;
+            // margin-left: auto; /* Center table */
+            margin-right: auto;
+        }
+        th, td {
+            border: 1px solid #333333;
+            padding: 6px;
+            text-align: center;
+        }
+        th {
+            background: #1A1A1A;
+            color: #CC3300; /* Deep orange table headers */
+        }
+        .pivot {
+            background-color: #ff8800ff; /* Green for pivot highlighting */
+        }
+        @media (max-width: 600px) {
+            .row {
+                flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+                gap: 8px;
+            }
+            button {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+            #form input[type="number"] {
+                width: 40px; /* Reasonable width for mobile */
+            }
+            #form input[type="radio"] {
+                width: 14px;
+                height: 14px;
+            }
+            #form input[type="radio"]:checked::after {
+                width: 7px;
+                height: 7px;
+            }
+        }
+    </style>
+
+    <div class="wrapper">
+        <h1 style="margin-top: 60px;">Adding Activities and Constraints</h1>
+
+        <div class="row">
+            <label><input type="radio" name="problemType" value="Max" checked> Max</label>
+            <label><input type="radio" name="problemType" value="Min"> Min</label>
+        </div>
+        <p id="problemTypeText">Problem is: Max</p>
+        <div class="row">
+            <label><input type="radio" name="absProblemType" value="On"> Abs On</label>
+            <label><input type="radio" name="absProblemType" value="Off" checked> Abs Off</label>
+        </div>
+        <p id="absProblemTypeText">absolute rule is: Off</p>
+
+        <div class="row">
+            <button id="addDecisionVar">Decision Variables +</button>
+            <button id="removeDecisionVar">Decision Variables -</button>
+        </div>
+
+        <div id="objectiveFunction" class="row"></div>
+
+        <div class="row">
+            <button id="addConstraint">Constraint +</button>
+            <button id="removeConstraint">Constraint -</button>
+        </div>
+
+        <div id="constraintsContainer"></div>
+
+        <div class="row">
+            <label><input type="radio" name="choiceProblemType" value="activities" checked> Adding Activities</label>
+            <label><input type="radio" name="choiceProblemType" value="constraints"> Adding Constraints</label>
+        </div>
+        <p id="choiceProblemTypeText">The current problem is adding activities</p>
+
+        <div id="problemTypeContainer"></div>
+
+        <div id="extra"></div>
+
+        <div class="row">
+            <button id="solveButton">Solve</button>
+            <button style="background-color: red;" id="resetButton">Reset</button>
+        </div>
     </div>
-    <p id="problemTypeText">Problem is: Max</p>
-    <div>
-        <label><input type="radio" name="absProblemType" value="On"> Abs On</label>
-        <label><input type="radio" name="absProblemType" value="Off" checked> Abs Off</label>
-    </div>
-    <p id="absProblemTypeText">absolute rule is: Off</p>
-
-    <p id="problemTypeText">Problem is: Max</p>
-
-    <div class="row">
-        <button id="addDecisionVar">decision variables +</button>
-        <button id="removeDecisionVar">decision variables -</button>
-    </div>
-
-    <div id="objectiveFunction" class="row"></div>
-
-    <div class="row">
-        <button id="addConstraint">Constraint +</button>
-        <button id="removeConstraint">Constraint -</button>
-    </div>
-
-    <div id="constraintsContainer"></div>
-
-    <div>
-        <label><input type="radio" name="choiceProblemType" value="activities" checked> adding activities</label>
-        <label><input type="radio" name="choiceProblemType" value="constraints"> adding constraints</label>
-    </div>
-    <p id="choiceProblemTypeText">the current problem is adding activities</p>
-
-    <br>
-    <div id="problemTypeContainer"></div>
-
-    <div id="extra"></div>
-
-    <div class="row">
-        <button id="solveButton">Solve</button>
-        <button id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
-    </div>
-    <br>
-
-    <div id="output"></div>
-  `;
+    `;
 
     // ===== STATE =====
     let problemType = "Max";
@@ -60,15 +238,11 @@ export function render(formContainer, resultsContainer, Module) {
     let constraints = [[0.0, 0.0, 0.0, 0.0]];
     let signItems = ["<=", ">="];
     let signItemsChoices = [0];
-
     let activity = [0.0, 0.0];
-
     let amtOfAddingConstraints = 1;
     let addingConstraints = [];
     let addingSignItemsChoices = [0];
-
     let rowsReversed = "Off";
-
     let negRule = "Off";
 
     function updateProblemType() {
@@ -81,7 +255,7 @@ export function render(formContainer, resultsContainer, Module) {
     }
     function updateChoiceProblemType() {
         choiceProblemType = document.querySelector('input[name="choiceProblemType"]:checked').value;
-        document.getElementById("choiceProblemTypeText").innerText = "the current problem is adding " + choiceProblemType;
+        document.getElementById("choiceProblemTypeText").innerText = "The current problem is adding " + choiceProblemType;
         updateChoices();
     }
     function updateReverseRows() {
@@ -93,15 +267,9 @@ export function render(formContainer, resultsContainer, Module) {
         document.getElementById("keepSlackText").innerText = "keep slack basic: " + negRule;
     }
 
-    // Set default selection to "Max"
-    // document.addEventListener('DOMContentLoaded', function () {
-    //     document.querySelector('input[value="Max"]').checked = true;
-    // });
-
     function updateObjectiveFunction() {
         const objFuncContainer = document.getElementById("objectiveFunction");
         objFuncContainer.innerHTML = "";
-
         for (let i = 0; i < amtOfObjVars; i++) {
             const input = document.createElement("input");
             input.type = "number";
@@ -109,10 +277,8 @@ export function render(formContainer, resultsContainer, Module) {
             input.oninput = (e) => {
                 objFunc[i] = parseFloat(e.target.value);
             };
-
             const label = document.createElement("span");
             label.innerText = `x${i + 1}`;
-
             objFuncContainer.appendChild(input);
             objFuncContainer.appendChild(label);
         }
@@ -121,11 +287,9 @@ export function render(formContainer, resultsContainer, Module) {
     function updateConstraints() {
         const container = document.getElementById("constraintsContainer");
         container.innerHTML = "";
-
         for (let i = 0; i < amtOfConstraints; i++) {
             const constraintRow = document.createElement("div");
             constraintRow.className = "constraint";
-
             for (let j = 0; j < amtOfObjVars; j++) {
                 const input = document.createElement("input");
                 input.type = "number";
@@ -133,14 +297,11 @@ export function render(formContainer, resultsContainer, Module) {
                 input.oninput = (e) => {
                     constraints[i][j] = parseFloat(e.target.value);
                 };
-
                 const label = document.createElement("span");
                 label.innerText = `x${j + 1}`;
-
                 constraintRow.appendChild(input);
                 constraintRow.appendChild(label);
             }
-
             const signSelect = document.createElement("select");
             signItems.forEach((sign, index) => {
                 const option = document.createElement("option");
@@ -153,17 +314,14 @@ export function render(formContainer, resultsContainer, Module) {
                 signItemsChoices[i] = parseInt(e.target.value);
                 constraints[i][amtOfObjVars + 1] = signItemsChoices[i];
             };
-
             const rhsInput = document.createElement("input");
             rhsInput.type = "number";
             rhsInput.value = constraints[i][amtOfObjVars];
             rhsInput.oninput = (e) => {
                 constraints[i][amtOfObjVars] = parseFloat(e.target.value);
             };
-
             constraintRow.appendChild(signSelect);
             constraintRow.appendChild(rhsInput);
-
             container.appendChild(constraintRow);
         }
     }
@@ -184,8 +342,7 @@ export function render(formContainer, resultsContainer, Module) {
         constraints.forEach(constraint => constraint.splice(amtOfObjVars - 1, 0, 0.0));
         updateObjectiveFunction();
         updateConstraints();
-
-        updateNewConstraints()
+        updateNewConstraints();
     };
 
     document.getElementById("removeDecisionVar").onclick = () => {
@@ -195,23 +352,20 @@ export function render(formContainer, resultsContainer, Module) {
             constraints.forEach(constraint => constraint.splice(amtOfObjVars, 1));
             updateObjectiveFunction();
             updateConstraints();
-
-            updateNewConstraints()
+            updateNewConstraints();
         }
     };
 
     document.getElementById("addConstraint").onclick = () => {
         amtOfConstraints++;
         const newConstraint = new Array(amtOfObjVars).fill(0.0);
-        newConstraint.push(0.0);  // for sign
-        newConstraint.push(0.0);  // for rhs
+        newConstraint.push(0.0); // for sign
+        newConstraint.push(0.0); // for rhs
         constraints.push(newConstraint);
         signItemsChoices.push(0);
         updateConstraints();
-
-        activity.push(0.0)
-
-        updateChoices()
+        activity.push(0.0);
+        updateChoices();
     };
 
     document.getElementById("removeConstraint").onclick = () => {
@@ -220,19 +374,16 @@ export function render(formContainer, resultsContainer, Module) {
             constraints.pop();
             signItemsChoices.pop();
             updateConstraints();
-
-            activity.pop()
-            updateChoices()
+            activity.pop();
+            updateChoices();
         }
     };
 
     function resetRadios() {
         document.querySelector('input[value="Max"]').checked = true;
-        const radioButtons = document.querySelectorAll('input[value="Off"]');
-        radioButtons.forEach(radioButton => {
+        document.querySelectorAll('input[value="Off"]').forEach(radioButton => {
             radioButton.checked = true;
         });
-
         document.querySelector('input[value="activities"]').checked = true;
     }
 
@@ -243,24 +394,17 @@ export function render(formContainer, resultsContainer, Module) {
         constraints = [[0.0, 0.0, 0.0, 0.0]];
         signItems = ["<=", ">="];
         signItemsChoices = [0];
-
-        activity = [0.0, 0.0]
-
+        activity = [0.0, 0.0];
         amtOfAddingConstraints = 1;
         addingConstraints = [];
         addingSignItemsChoices = [0];
-
         problemType = "Max";
         absProblemType = "Off";
-
         choiceProblemType = "activities";
         negRule = "Off";
         rowsReversed = "Off";
-
         resultsContainer.innerHTML = "";
-
         updateChoices();
-
         updateObjectiveFunction();
         updateConstraints();
         resetRadios();
@@ -269,47 +413,35 @@ export function render(formContainer, resultsContainer, Module) {
     function updateActivityInputs() {
         const container = document.getElementById('problemTypeContainer');
         container.innerHTML = "";
-
-        // extraContainer = document.getElementById('extra');
-        // extraContainer.innerHTML = "";
-
         for (let i = 0; i < activity.length; i++) {
             const row = document.createElement('div');
             row.className = 'constraint';
-
             const input = document.createElement('input');
             input.type = 'number';
             input.value = activity[i];
             input.addEventListener('input', (event) => {
                 activity[i] = parseFloat(event.target.value);
             });
-
             const label = document.createElement('span');
             label.textContent = i === 0 ? 'x' : `c${i}`;
-
             row.appendChild(input);
             row.appendChild(label);
             container.appendChild(row);
         }
-
     }
 
     function updateNewConstraints() {
         const container = document.getElementById("newConstraintsContainer");
-
         if (!container) {
             return;
         }
         container.innerHTML = "";
-
         for (let i = 0; i < amtOfAddingConstraints; i++) {
             if (addingConstraints.length <= i) {
                 addingConstraints.push(new Array(amtOfObjVars + 2).fill(0.0));
             }
-
             const constraintRow = document.createElement("div");
             constraintRow.className = "constraint";
-
             for (let j = 0; j < amtOfObjVars; j++) {
                 const input = document.createElement("input");
                 input.type = "number";
@@ -317,14 +449,11 @@ export function render(formContainer, resultsContainer, Module) {
                 input.oninput = (e) => {
                     addingConstraints[i][j] = parseFloat(e.target.value);
                 };
-
                 const label = document.createElement("span");
                 label.innerText = `x${j + 1}`;
-
                 constraintRow.appendChild(input);
                 constraintRow.appendChild(label);
             }
-
             const signSelect = document.createElement("select");
             signItems.forEach((sign, index) => {
                 const option = document.createElement("option");
@@ -334,100 +463,47 @@ export function render(formContainer, resultsContainer, Module) {
             });
             signSelect.value = addingSignItemsChoices[i];
             signSelect.onchange = (e) => {
-                addingSignItemsChoices[i] = parseInt(e.target.value);
+                signItemsChoices[i] = parseInt(e.target.value);
                 addingConstraints[i][amtOfObjVars + 1] = addingSignItemsChoices[i];
             };
-
             const rhsInput = document.createElement("input");
             rhsInput.type = "number";
             rhsInput.value = addingConstraints[i][amtOfObjVars];
             rhsInput.oninput = (e) => {
                 addingConstraints[i][amtOfObjVars] = parseFloat(e.target.value);
             };
-
             constraintRow.appendChild(signSelect);
             constraintRow.appendChild(rhsInput);
-
             container.appendChild(constraintRow);
         }
-        document.getElementById('problemTypeContainer').appendChild(container);
-
     }
 
     function updateAddingNewConstraints() {
         const container = document.getElementById('problemTypeContainer');
         container.innerHTML = "";
-
         const row = document.createElement("div");
         row.className = "row";
-
         const addButton = document.createElement("button");
         addButton.id = "addNewConstraint";
         addButton.textContent = "New Constraint +";
-
         const removeButton = document.createElement("button");
         removeButton.id = "removeNewConstraint";
         removeButton.textContent = "New Constraint -";
-
         row.appendChild(addButton);
         row.appendChild(removeButton);
-
         container.appendChild(row);
-
-        if (document.getElementById('newConstraintsContainer')) {
-            container.removeChild(row);
-        }
         const newConstraint = document.createElement("div");
         newConstraint.id = "newConstraintsContainer";
-        newConstraint.innerHTML = "";
-
         container.appendChild(newConstraint);
-
-        // extraContainer = document.getElementById('extra');
-        // extraContainer.innerHTML = "";
-
-        // existing = document.querySelector('div > label > input[name="rowsReversed"]');
-        // if (existing) existing.parentNode.remove();
-
-        // existing = document.querySelector('div > label > input[name="keepSlack"]');
-        // if (existing) existing.parentNode.remove();
-
-        // div = document.createElement('div');
-        // div.innerHTML = `
-        //         <label><input type="radio" name="rowsReversed" value="On"> reverse rows On</label>
-        //         <label><input type="radio" name="rowsReversed" value="Off" checked> reverse rows Off</label>
-        //         <p id="rowsReversedText">reverse rows: Off</p>
-        //     `;
-
-        // extraContainer.appendChild(div);
-
-        // div = document.createElement('div');
-        // div.innerHTML = `
-        //         <label><input type="radio" name="keepSlack" value="On"> keep slack basic on</label>
-        //         <label><input type="radio" name="keepSlack" value="Off" checked> keep slack basic off</label>
-        //         <p id="keepSlackText">keep slack basic: Off</p>
-        //     `;
-
-        // extraContainer.appendChild(div);
-
-        // document.querySelectorAll('input[name="rowsReversed"]').forEach(radio => {
-        //     radio.onchange = updateReverseRows;
-        // });
-
-        // document.querySelectorAll('input[name="keepSlack"]').forEach(radio => {
-        //     radio.onchange = updateKeepSlack;
-        // });
-
         document.getElementById("addNewConstraint").onclick = () => {
             amtOfAddingConstraints++;
             const newConstraint = new Array(amtOfObjVars).fill(0.0);
-            newConstraint.push(0.0);  // for sign
-            newConstraint.push(0.0);  // for rhs
+            newConstraint.push(0.0); // for sign
+            newConstraint.push(0.0); // for rhs
             addingConstraints.push(newConstraint);
             addingSignItemsChoices.push(0);
             updateNewConstraints();
         };
-
         document.getElementById("removeNewConstraint").onclick = () => {
             if (amtOfAddingConstraints > 1) {
                 amtOfAddingConstraints--;
@@ -445,8 +521,7 @@ export function render(formContainer, resultsContainer, Module) {
             document.querySelectorAll('.tableauContainer2').forEach(elem => elem.remove());
             resultsContainer.innerHTML = "";
             updateActivityInputs();
-        }
-        else {
+        } else {
             document.querySelectorAll('.tableauContainer').forEach(elem => elem.remove());
             document.querySelectorAll('.tableauContainer2').forEach(elem => elem.remove());
             resultsContainer.innerHTML = "";
@@ -455,43 +530,21 @@ export function render(formContainer, resultsContainer, Module) {
     }
 
     document.getElementById("solveButton").onclick = () => {
-        // try {
-        let objFunc = [60, 30, 20];
-        let constraints = [
-            [8, 6, 1, 48, 0],
-            [4, 2, 1.5, 20, 0],
-            [2, 1.5, 0.5, 8, 0]
-        ];
-
-        let newAct = [40, -1, -1, -1]
-        // let newAct = [20, 1, 1, 1]
-
-        let newCons = [
-            [0, 0, 1, 5, 0],
-        ]
-
+        // let objFunc = [60, 30, 20];
+        // let constraints = [
+        //     [8, 6, 1, 48, 0],
+        //     [4, 2, 1.5, 20, 0],
+        //     [2, 1.5, 0.5, 8, 0]
+        // ];
+        // let newAct = [40, -1, -1, -1];
+        // let newCons = [[0, 0, 1, 5, 0]];
         let isMin = (problemType === "Min");
-
         let result = "something";
-
         if (choiceProblemType == "activities") {
-            result = Module.runAddActivity(
-                objFunc,
-                constraints,
-                isMin,
-                newAct,
-            );
+            result = Module.runAddActivity(objFunc, constraints, isMin, activity);
+        } else {
+            result = Module.runAddConstraints(objFunc, constraints, isMin, newCons);
         }
-        else {
-            result = Module.runAddConstraints(
-                objFunc,
-                constraints,
-                isMin,
-                newCons,
-            );
-        }
-
-        // Format a single cell
         const formatCell = (cell) => {
             if (typeof cell === "number") {
                 if (Math.abs(cell) < 1e-10) return "0";
@@ -499,18 +552,12 @@ export function render(formContainer, resultsContainer, Module) {
             }
             return String(cell).replace(/\bd\b/g, "Δ");
         };
-
-        // Render a single row (optionally with a row label)
         const renderRow = (arr, rowLabel = "") => {
             return `<tr>${rowLabel ? `<th>${rowLabel}</th>` : ""}${arr.map(c => `<td>${formatCell(c)}</td>`).join("")}</tr>`;
         };
-
-        // Render a 2D array as a table with header row and row labels
         const renderTable2D = (mat) => {
             if (!Array.isArray(mat) || !mat.length) return "";
-
             const numCols = mat[0].length;
-
             const headers = [];
             for (let i = 0; i < numCols; i++) {
                 if (i < objFunc.length) {
@@ -522,9 +569,7 @@ export function render(formContainer, resultsContainer, Module) {
                     headers.push(`<th>s/e${index + 1}</th>`);
                 }
             }
-
             const header = `<tr><th></th>${headers.join("")}</tr>`;
-
             return `<table border="1" cellspacing="0" cellpadding="4">
             ${header}
             ${mat.map((row, i) => {
@@ -533,16 +578,11 @@ export function render(formContainer, resultsContainer, Module) {
             }).join("")}
             </table>`;
         };
-
-        // Render a 3D array as multiple tables
-        // Updated renderTables3D to optionally highlight pivots
         const renderTables3D = (tensor, pivotRowsArr = [], pivotColsArr = []) => {
             if (!Array.isArray(tensor)) return "";
-
             return tensor.map((mat, i) => {
                 const pivotRow = pivotRowsArr[i] ?? -1;
                 const pivotCol = pivotColsArr[i] ?? -1;
-
                 const tableHTML = `<table border="1" cellspacing="0" cellpadding="4">
             <tr>
                 <th></th>
@@ -554,8 +594,7 @@ export function render(formContainer, resultsContainer, Module) {
                             const index = colIndex - objFunc.length;
                             return index === mat[0].length - objFunc.length - 1 ? `<th>rhs</th>` : `<th>s/e${index + 1}</th>`;
                         }
-                    }
-                    else {
+                    } else {
                         if (colIndex < objFunc.length) {
                             return `<th>x${colIndex + 1}</th>`;
                         } else {
@@ -570,113 +609,76 @@ export function render(formContainer, resultsContainer, Module) {
                     return `<tr>${rowLabel ? `<th>${rowLabel}</th>` : ""}${row.map((cell, colIndex) => {
                         let classes = "";
                         if (rowIndex === pivotRow || colIndex === pivotCol) classes = "pivot";
-
                         if (typeof cell === "number") {
                             if (Math.abs(cell) < 1e-10) cell = 0;
                             cell = Number(cell.toFixed(4));
                         } else {
                             cell = String(cell).replace(/\bd\b/g, "Δ");
                         }
-
                         return `<td class="${classes}">${cell}</td>`;
                     }).join("")}</tr>`;
                 }).join("")}
                 </table>`;
-
-                if (i == tensor.length - 1)
-                {
-                    return tensor.length === 1 ? `<h4></h4>${tableHTML}` : `<h4>optimal Table</h4>${tableHTML}`;
-                }
-                else
-                {
-                    return tensor.length === 1 ? `<h4></h4>${tableHTML}` : `<h4>Table ${i + 1}</h4>${tableHTML}`;
-                }
-
+                return tensor.length === 1 ? `<h4></h4>${tableHTML}` : `<h4>${i == tensor.length - 1 ? "Optimal Table" : `Table ${i + 1}`}</h4>${tableHTML}`;
             }).join("<br>");
         };
-
-        // CSS for pivot highlighting
         const style = document.createElement("style");
-        style.innerHTML = `.pivot { background-color: lightgreen; }`;
+        // style.innerHTML = `.pivot { background-color: #4CAF50; }`;
+        style.innerHTML = `.pivot { background-color: #ff8800ff; }`;
         document.head.appendChild(style);
-
         const fmt = (num) => {
             if (typeof num === "number") {
-                // Treat very small numbers as 0
                 if (Math.abs(num) < 1e-10) return "0";
-                // Round to 4 decimals safely
                 return Math.round(num * 10000) / 10000;
             }
-            // Replace 'd' with Δ for non-numbers
             return String(num).replace(/\bd\b/g, "Δ");
         };
         const renderVector = (vec) => {
             if (!vec || !vec.length) return "";
-
-            // Detect if vec is 1D (numbers) or 2D (array of arrays)
             const is2D = Array.isArray(vec[0]);
-
             const tableRows = vec.map((row) => {
                 if (is2D) {
                     const cells = row.map(cell => `<td>${fmt(cell)}</td>`).join("");
                     return `<tr>${cells}</tr>`;
                 } else {
-                    // Single column 1D vector
                     return `<tr><td>${fmt(row)}</td></tr>`;
                 }
             });
-
             return `<table border="1" cellspacing="0" cellpadding="4">${tableRows.join("")}</table>`;
         };
-
-
-        // ----------------------------
-        // Usage
-        // ----------------------------
         if (result.newOptTabs.length != 1) {
             if (choiceProblemType == "activities") {
                 resultsContainer.innerHTML = `
                 <h3>Math Preliminaries Results</h3>
-
                 <h4>New Activity Column</h4>
                 ${renderVector(result.actCol)}
-
-                <h4>changing table</h4>
+                <h4>Changing Table</h4>
                 ${renderTables3D(result.OptTabs)}
-
                 <h4>New Optimal Tables</h4>
                 ${renderTables3D(result.newOptTabs, result.pivotRows, result.pivotCols)}
             `;
-            }
-            else {
+            } else {
                 resultsContainer.innerHTML = `
                 <h3>Math Preliminaries Results</h3>
-
-                <h4>changing table</h4>
+                <h4>Changing Table</h4>
                 ${renderTables3D(result.OptTabs)}
-
                 <h4>New Optimal Tables</h4>
                 ${renderTables3D(result.newOptTabs, result.pivotRows, result.pivotCols)}
             `;
             }
-        }
-        else {
+        } else {
             if (choiceProblemType == "activities") {
                 resultsContainer.innerHTML = `
                 <h3>Math Preliminaries Results</h3>
-
                 <h4>New Activity Column</h4>
                 ${renderVector(result.actCol)}
-
-                <h4>changing table</h4>
+                <h4>Changing Table</h4>
                 ${renderTables3D(result.OptTabs)}
             `;
-            }
-            else {
+            } else {
                 resultsContainer.innerHTML = `
                 <h3>Math Preliminaries Results</h3>
-
-                <h4>changing table</h4>
+                <h4>Changing Table</h4>
                 ${renderTables3D(result.OptTabs)}
             `;
             }

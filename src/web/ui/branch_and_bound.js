@@ -1,5 +1,4 @@
 export async function render(formContainer, resultsContainer, Module) {
-
     if (typeof window.d3 === "undefined") {
         await new Promise((resolve, reject) => {
             const script = document.createElement("script");
@@ -10,72 +9,258 @@ export async function render(formContainer, resultsContainer, Module) {
         });
     }
 
-    // Insert HTML
+    // Insert HTML with inline CSS for form and D3.js styling
     formContainer.innerHTML = `
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; background: #f9fafb; }
+        /* Wrapper to center all content */
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            max-width: 1200px; /* Optional: limits width for better readability */
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Existing styles */
         #tree { width: 100%; height: 100vh; overflow: hidden; }
         svg { display: block; }
-        .link { fill: none; stroke: #6b7280; stroke-width: 2px; }
+        .link { fill: none; stroke: #ff0000ff; stroke-width: 5px; }
         .node-box { 
-            background-color: #f3f4f6; 
             border-radius: 8px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
             padding: 8px; 
             box-sizing: border-box; 
             overflow: auto; 
+            border: 20px solid red;
         }
         .node-box.integer { background-color: #d1fae5; }
         .node-box.infeasible { background-color: #fee2e2; }
         .node-box.pruned { background-color: #e5e7eb; }
         .tableau table { border-collapse: collapse; margin-top: 6px; margin-left: auto; margin-right: auto; max-width: 100%; }
         .tableau th, .tableau td { border: 1px solid #d1d5db; padding: 3px; text-align: right; font-size: 9px; word-break: break-all; }
-        .tableau th { background-color: #e5e7eb; }
-        .tableau .pivot-cell { background-color: hsl(103, 90%, 62%); font-weight: bold; }
-        .tableau .pivot-row-col { background-color: hsl(103, 90%, 62%); }
-        </style>
+        .tableau .pivot-cell { background-color: #CC3300; font-weight: bold; }
+        .tableau .pivot-row-col { background-color: #CC3300; }
 
-        <h1>Branch and Bound</h1>
+        /* Form and button styling */
+        .row { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 15px; 
+            align-items: center;
+            justify-content: center; /* Center items in the row */
+        }
+        button {
+            background: #333333;
+            color: #FFFFFF;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: background 0.2s ease;
+        }
+        button:hover {
+            background: #CC3300;
+            color: #000000;
+        }
+        button#resetButton {
+            background: #1A1A1A;
+        }
+        button#resetButton:hover {
+            background: #992600;
+        }
+        #form input[type="number"], #form select {
+            background: #1A1A1A;
+            color: #FFFFFF;
+            border: 1px solid #333333;
+            padding: 6px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        #form input[type="number"] {
+            width: 50px;
+            -webkit-appearance: none !important;
+            -moz-appearance: textfield !important;
+            appearance: none !important;
+        }
+        #form input[type="number"]::-webkit-inner-spin-button,
+        #form input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none !important;
+            display: none !important;
+            margin: 0 !important;
+            opacity: 0 !important;
+        }
+        #form input[type="number"] {
+            -moz-appearance: textfield !important;
+        }
+        #form select {
+            width: auto;
+            min-width: 60px;
+        }
+        #form input[type="number"]:focus, #form select:focus {
+            border-color: #CC3300;
+            outline: none;
+        }
+        #form input[type="radio"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333333;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+        }
+        #form input[type="radio"]:checked {
+            border-color: #CC3300;
+            background: #CC3300;
+        }
+        #form input[type="radio"]:checked::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #FFFFFF;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #form input[type="radio"]:hover {
+            border-color: #CC3300;
+        }
+        #form input[type="radio"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #CC3300;
+        }
+        #form input[type="checkbox"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #333333;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+        }
+        #form input[type="checkbox"]:checked {
+            border-color: #CC3300;
+            background: #CC3300;
+        }
+        #form input[type="checkbox"]:checked::after {
+            content: '✔';
+            color: #FFFFFF;
+            font-size: 12px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #form input[type="checkbox"]:hover {
+            border-color: #CC3300;
+        }
+        #form input[type="checkbox"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #CC3300;
+        }
+        label {
+            margin-right: 15px;
+            display: flex;
+            align-items: center;
+        }
+        p {
+            color: #000000;
+            margin-bottom: 10px;
+        }
+        h1, h3, h4 {
+            color: #CC3300;
+            margin-bottom: 10px;
+            text-align: center; /* Center headings */
+        }
+        .constraint {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+            justify-content: center; /* Center constraint rows */
+        }
+        #results {
+            background: #1A1A1A;
+            border: 1px solid #333333;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center; /* Center text in results */
+        }
+        @media (max-width: 600px) {
+            .row {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            button {
+                padding: 6px 12px;
+                font-size: 0.85rem;
+            }
+            #form input[type="number"] {
+                width: 40px;
+            }
+            #form input[type="radio"], #form input[type="checkbox"] {
+                width: 14px;
+                height: 14px;
+            }
+            #form input[type="radio"]:checked::after, #form input[type="checkbox"]:checked::after {
+                width: 7px;
+                height: 7px;
+                font-size: 10px;
+            }
+        }
+    </style>
 
-        <div>
-        <label><input type="radio" name="problemType" value="Max" checked> Max</label>
-        <label><input type="radio" name="problemType" value="Min"> Min</label>
+    <div class="wrapper">
+        <h1 style="margin-top: 60px;">Branch and Bound</h1>
+
+        <div class="row">
+            <label><input type="radio" name="problemType" value="Max" checked> Max</label>
+            <label><input type="radio" name="problemType" value="Min"> Min</label>
         </div>
 
         <p id="problemTypeText">Problem is: Max</p>
 
         <div class="row">
-        <button id="addDecisionVar">decision variables +</button>
-        <button id="removeDecisionVar">decision variables -</button>
+            <button id="addDecisionVar">Decision Variables +</button>
+            <button id="removeDecisionVar">Decision Variables -</button>
         </div>
 
         <div id="objectiveFunction" class="row"></div>
 
         <div class="row">
-        <button id="addConstraint">Constraint +</button>
-        <button id="removeConstraint">Constraint -</button>
+            <button id="addConstraint">Constraint +</button>
+            <button id="removeConstraint">Constraint -</button>
         </div>
 
         <div id="constraintsContainer"></div>
 
-        <div id="toggleContainer" style="display: none;">
-        <br>
-        <input type="checkbox" id="toggleBtn" />
-        <label for="toggleBtn">Assume Binary</label>
-        <br>
-        <br>
+        <div id="toggleContainer" class="row">
+            <label><input type="checkbox" id="toggleBtn" checked> Assume Binary</label>
         </div>
-
 
         <div class="row">
-        <button id="solveButton">Solve</button>
-        <button id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
+            <button id="solveButton">Solve</button>
+            <button style="background-color: red;" id="resetButton">Reset</button>
         </div>
 
-        <h1 class="text-2xl font-bold p-4">Branch and Bound Tree</h1>
-        <div id="tree"></div>
-  `;
-
+        <h1>Branch and Bound Tree</h1>
+    </div>
+    <div id="tree"></div>
+    `;
 
     // ===== STATE =====
     let problemType = "Max";
@@ -94,7 +279,6 @@ export async function render(formContainer, resultsContainer, Module) {
     function updateObjectiveFunction() {
         const objFuncContainer = document.getElementById("objectiveFunction");
         objFuncContainer.innerHTML = "";
-
         for (let i = 0; i < amtOfObjVars; i++) {
             const input = document.createElement("input");
             input.type = "number";
@@ -102,10 +286,8 @@ export async function render(formContainer, resultsContainer, Module) {
             input.oninput = (e) => {
                 objFunc[i] = parseFloat(e.target.value);
             };
-
             const label = document.createElement("span");
             label.innerText = `x${i + 1}`;
-
             objFuncContainer.appendChild(input);
             objFuncContainer.appendChild(label);
         }
@@ -114,11 +296,9 @@ export async function render(formContainer, resultsContainer, Module) {
     function updateConstraints() {
         const container = document.getElementById("constraintsContainer");
         container.innerHTML = "";
-
         for (let i = 0; i < amtOfConstraints; i++) {
             const constraintRow = document.createElement("div");
             constraintRow.className = "constraint";
-
             for (let j = 0; j < amtOfObjVars; j++) {
                 const input = document.createElement("input");
                 input.type = "number";
@@ -126,14 +306,11 @@ export async function render(formContainer, resultsContainer, Module) {
                 input.oninput = (e) => {
                     constraints[i][j] = parseFloat(e.target.value);
                 };
-
                 const label = document.createElement("span");
                 label.innerText = `x${j + 1}`;
-
                 constraintRow.appendChild(input);
                 constraintRow.appendChild(label);
             }
-
             const signSelect = document.createElement("select");
             signItems.forEach((sign, index) => {
                 const option = document.createElement("option");
@@ -146,29 +323,20 @@ export async function render(formContainer, resultsContainer, Module) {
                 signItemsChoices[i] = parseInt(e.target.value);
                 constraints[i][amtOfObjVars + 1] = signItemsChoices[i];
             };
-
             const rhsInput = document.createElement("input");
             rhsInput.type = "number";
             rhsInput.value = constraints[i][amtOfObjVars];
             rhsInput.oninput = (e) => {
                 constraints[i][amtOfObjVars] = parseFloat(e.target.value);
             };
-
             constraintRow.appendChild(signSelect);
             constraintRow.appendChild(rhsInput);
-
             container.appendChild(constraintRow);
         }
-
         const toggleContainer = document.getElementById('toggleContainer');
-        const toggleBtn = document.getElementById('toggleBtn');
-
         if (amtOfConstraints == 1) {
-            toggleBtn.checked = false;
-            toggleContainer.style.display = 'block';
-        }
-        else {
-            toggleBtn.checked = false;
+            toggleContainer.style.display = 'flex';
+        } else {
             toggleContainer.style.display = 'none';
         }
     }
@@ -198,8 +366,8 @@ export async function render(formContainer, resultsContainer, Module) {
     document.getElementById("addConstraint").onclick = () => {
         amtOfConstraints++;
         const newConstraint = new Array(amtOfObjVars).fill(0.0);
-        newConstraint.push(0.0);  // for sign
-        newConstraint.push(0.0);  // for rhs
+        newConstraint.push(0.0); // for sign
+        newConstraint.push(0.0); // for rhs
         constraints.push(newConstraint);
         signItemsChoices.push(0);
         updateConstraints();
@@ -216,6 +384,7 @@ export async function render(formContainer, resultsContainer, Module) {
 
     function resetRadios() {
         document.querySelector('input[value="Max"]').checked = true;
+        document.getElementById('toggleBtn').checked = true;
     }
 
     document.getElementById("resetButton").onclick = () => {
@@ -227,7 +396,6 @@ export async function render(formContainer, resultsContainer, Module) {
         signItems = ["<=", ">="];
         signItemsChoices = [0];
         resultsContainer.innerHTML = "";
-
         updateObjectiveFunction();
         updateConstraints();
         resetRadios();
@@ -239,28 +407,10 @@ export async function render(formContainer, resultsContainer, Module) {
 
     document.getElementById("solveButton").onclick = () => {
         try {
-            objFunc = [2, 3, 3, 5, 2, 4];
-
-            // constraints = [
-            //     [11, 8, 6, 14, 10, 10, 40, 0],
-            //     [1, 0, 0, 0, 0, 0, 0, 1, 0],
-            //     [0, 1, 0, 0, 0, 0, 0, 1, 0],
-            //     [0, 0, 1, 0, 0, 0, 0, 1, 0],
-            //     [0, 0, 0, 1, 0, 0, 0, 1, 0],
-            //     [0, 0, 0, 0, 1, 0, 0, 1, 0],
-            //     [0, 0, 0, 0, 0, 1, 0, 1, 0],
-            // ]
-
-            constraints = [[11, 8, 6, 14, 10, 10, 40, 0]]
-
-            // objFunc = [300, 840, 160, 520];
-
-            // constraints = [
-            //     [7, 15, 3, 13, 23, 0],
-            // ]
-
+            // objFunc = [2, 3, 3, 5, 2, 4];
+            // constraints = [[11, 8, 6, 14, 10, 10, 40, 0]];
+            
             const toggleBtn = document.getElementById('toggleBtn');
-
             if (toggleBtn.checked) {
                 const numConstraints = objFunc.length;
                 const vectorLength = objFunc.length + 3;
@@ -271,9 +421,7 @@ export async function render(formContainer, resultsContainer, Module) {
                     constraints.push(row);
                 }
             }
-
             let isMin = (problemType === "Min");
-
             const result = Module.runBranchAndBound(objFunc, constraints, isMin);
 
             function parseTableau(tableauStr) {
@@ -315,7 +463,6 @@ export async function render(formContainer, resultsContainer, Module) {
             function calculateMaxHeight(hierarchy) {
                 let maxHeight = 0;
                 hierarchy.each(d => {
-                    // let h = 80;
                     let h = 80;
                     if (d.data.constraintsPath && d.data.constraintsPath.length > 0) {
                         const constraintsText = d.data.constraintsPath.join('; ');
@@ -337,9 +484,7 @@ export async function render(formContainer, resultsContainer, Module) {
                     });
                     maxHeight = Math.max(maxHeight, h);
                 });
-
-
-                GOLBAL_MAX_HEIGHT = maxHeight * 1.1
+                GOLBAL_MAX_HEIGHT = maxHeight * 1.1;
                 return maxHeight * 1.1;
             }
 
@@ -379,43 +524,32 @@ export async function render(formContainer, resultsContainer, Module) {
                 return Math.max(maxWidth + 60, 450);
             }
 
-            /* ---------- main rendering ---------- */
             function renderTree(rootData) {
                 d3.select('#tree').selectAll('*').remove();
-
                 const hierarchy = d3.hierarchy(rootData);
                 const maxBoxHeight = calculateMaxHeight(hierarchy);
                 const maxBoxWidth = calculateMaxWidth(hierarchy);
-
                 const nodeSizeWidth = maxBoxWidth + 100;
                 const nodeSizeHeight = maxBoxHeight + 100;
-
                 const treeLayout = d3.tree().nodeSize([nodeSizeWidth, nodeSizeHeight]);
                 const treeData = treeLayout(hierarchy);
-
-                // bounding box of content
                 const allRight = treeData.descendants().map(d => d.x + maxBoxWidth / 2);
                 const allLeft = treeData.descendants().map(d => d.x - maxBoxWidth / 2);
                 const minLeft = Math.min(...allLeft);
                 const maxRight = Math.max(...allRight);
-
                 const allBottom = treeData.descendants().map(d => d.y + maxBoxHeight / 2);
                 const allTop = treeData.descendants().map(d => d.y - maxBoxHeight / 2);
                 const minTop = Math.min(...allTop);
                 const maxBottom = Math.max(...allBottom);
-
                 const horizontalMargin = 50;
                 const verticalMargin = 50;
                 const contentWidth = Math.max(1, (maxRight - minLeft) + horizontalMargin * 2);
                 const contentHeight = Math.max(1, (maxBottom - minTop) + verticalMargin * 2);
-
                 const svgWidth = window.innerWidth;
                 const svgHeight = window.innerHeight;
-
                 const svg = d3.select('#tree').append('svg')
                     .attr('width', svgWidth)
                     .attr('height', svgHeight);
-
                 const zoomG = svg.append('g');
                 const minScale = 0.1;
                 const maxScale = 6;
@@ -425,9 +559,7 @@ export async function render(formContainer, resultsContainer, Module) {
                         zoomG.attr('transform', event.transform);
                     });
                 svg.call(zoom);
-
                 const g = zoomG.append('g');
-
                 g.selectAll('.link')
                     .data(treeData.links())
                     .enter()
@@ -438,21 +570,18 @@ export async function render(formContainer, resultsContainer, Module) {
                         const targetX = d.target.x, targetY = d.target.y - maxBoxHeight / 2;
                         return `M${sourceX},${sourceY} L${targetX},${targetY}`;
                     });
-
                 const nodes = g.selectAll('.node')
                     .data(treeData.descendants())
                     .enter()
                     .append('g')
                     .attr('class', 'node')
                     .attr('transform', d => `translate(${d.x},${d.y})`);
-
                 nodes.append('foreignObject')
                     .attr('width', maxBoxWidth)
                     .attr('height', maxBoxHeight)
                     .attr('x', -maxBoxWidth / 2)
                     .attr('y', -maxBoxHeight / 2)
                     .html(d => {
-                        //   let html = `<div class="node-box" style="width:${maxBoxWidth}px; height:${maxBoxHeight}px; display:flex; flex-direction:column; justify-content:center; align-items:center;">`;
                         let html = `<div class="node-box" style="width:${maxBoxWidth}px; height:${maxBoxHeight}px; display:flex; flex-direction:column; justify-content:flex-start; align-items:center;">`;
                         html += `<div class="text-sm font-bold text-center">Node ${d.data.name}</div>`;
                         html += `<div class="text-xs text-center">Objective: ${d.data.objective !== null ? d.data.objective.toFixed(2) : 'INFEASBLE'}</div>`;
@@ -470,7 +599,6 @@ export async function render(formContainer, resultsContainer, Module) {
                         return html;
                     });
 
-                // --- helper to center on a node by index ---
                 function centerOnNodeIndex(nodeIndex = 0, desiredScale = null) {
                     const descendants = treeData.descendants();
                     if (!descendants || descendants.length === 0) return;
@@ -478,37 +606,28 @@ export async function render(formContainer, resultsContainer, Module) {
                     const node = descendants[idx];
                     const nodeX = node.x;
                     const nodeY = node.y;
-
                     let k = desiredScale;
                     if (k == null) {
-                        //   k = Math.min(svgWidth / contentWidth, svgHeight / contentHeight) * 1.2; // zoom in a bit
-                        k = 1.0
+                        k = 1.0;
                     }
                     k = Math.max(minScale, Math.min(maxScale, k));
-
                     const tx = svgWidth / 2 - k * nodeX;
-                    // const ty = svgHeight / 2 - k * nodeY + 500;
                     const ty = GOLBAL_MAX_HEIGHT / 2;
-
                     svg.transition().duration(500).call(
                         zoom.transform,
                         d3.zoomIdentity.translate(tx, ty).scale(k)
                     );
                 }
 
-                // ---- Center on the first node (root) ----
                 centerOnNodeIndex(0);
             }
 
-            let jsonOut = JSON.parse(result.json)
-
+            let jsonOut = JSON.parse(result.json);
             renderTree(jsonOut);
-
             resultsContainer.innerHTML = "";
             const preElement = document.createElement("pre");
             preElement.textContent = result.solution;
             resultsContainer.appendChild(preElement);
-
         } catch (err) {
             resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
         }
@@ -519,5 +638,3 @@ export async function render(formContainer, resultsContainer, Module) {
     updateConstraints();
     updateProblemType();
 }
-
-

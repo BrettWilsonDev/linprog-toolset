@@ -19,12 +19,12 @@ export async function render(formContainer, resultsContainer, Module) {
         }
 
         svg {
-            background: #fafafa;
+            background: #000000;
             cursor: grab;
         }
 
         .node rect {
-            fill: #fefefe;
+            fill: #000000;
             stroke: #333;
             stroke-width: 1.2px;
             rx: 6;
@@ -49,9 +49,98 @@ export async function render(formContainer, resultsContainer, Module) {
             box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.2);
             display: none;
         }
+
+
+                    /* Button and form styling */
+            .row {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 15px;
+                align-items: center;
+                justify-content: center; /* Center items in the row */
+            }
+            button {
+                background: #333333; /* Dark gray base */
+                color: #FFFFFF;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: bold;
+                transition: background 0.2s ease;
+            }
+            button:hover {
+                background: #CC3300; /* Deep orange on hover */
+                color: #000000;
+            }
+            button#resetButton {
+                background: #1A1A1A; /* Darker gray for distinction */
+            }
+            button#resetButton:hover {
+                background: #992600; /* Darker orange for reset hover */
+            }
+            #form input[type="number"], #form select {
+                background: #1A1A1A; /* Dark input background */
+                color: #FFFFFF;
+                border: 1px solid #333333;
+                padding: 6px;
+                border-radius: 4px;
+                margin: 5px 0;
+            }
+            #form input[type="number"] {
+                width: 50px; /* Reasonable width for number inputs */
+                -webkit-appearance: none !important;
+                -moz-appearance: textfield !important;
+                appearance: none !important;
+            }
+            #form input[type="number"]::-webkit-inner-spin-button,
+            #form input[type="number"]::-webkit-outer-spin-button {
+                -webkit-appearance: none !important;
+                display: none !important;
+                margin: 0 !important;
+                opacity: 0 !important;
+            }
+            #form input[type="number"] {
+                -moz-appearance: textfield !important;
+            }
+            #form select {
+                width: auto;
+                min-width: 60px;
+            }
+            #form input[type="number"]:focus, #form select:focus {
+                border-color: #CC3300; /* Deep orange border on focus */
+                outline: none;
+            }
+            label {
+                color: #CCCCCC; /* Light gray for labels */
+                margin-right: 15px;
+                display: flex;
+                align-items: center;
+            }
+
+                        .constraint {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 10px;
+                align-items: center;
+                justify-content: center; /* Center constraint rows */
+            }
+
+            h1, h2, h3, h4 {
+                color: #CC3300; /* Deep orange headings */
+                margin-bottom: 10px;
+                // text-align: center; /* Center headings */
+            }
+
+                        p {
+                color: #FFFFFF; /* White for readability */
+                margin-bottom: 10px;
+                text-align: center; /* Center paragraphs */
+            }
     </style>
 
-    <h1>Branch and Bound Knapsack</h1>
+    <h1 style="margin-top: 60px;" style="text-align: center" class="row">Branch and Bound Knapsack</h1>
 
     <p id="problemTypeText">Problem is: Max</p>
 
@@ -68,10 +157,10 @@ export async function render(formContainer, resultsContainer, Module) {
 
     <div class="row">
       <button id="solveButton">Solve</button>
-      <button id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
+      <button style="background-color: red;" id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
     </div>
 
-    <h2 style="padding:10px;">Branch and Bound Knapsack Tree</h2>
+    <h2 style="padding:10px; text-align: center">Branch and Bound Knapsack Tree</h2>
     <svg id="svgID" width="1600" height="1000"></svg>
     <div class="tooltip"></div>
   `;
@@ -199,11 +288,11 @@ export async function render(formContainer, resultsContainer, Module) {
 
     document.getElementById("solveButton").onclick = () => {
         try {
-            objFunc = [300, 840, 160, 520];
+            // objFunc = [300, 840, 160, 520];
 
-            constraints = [
-                [7, 15, 3, 13, 23, 0],
-            ]
+            // constraints = [
+            //     [7, 15, 3, 13, 23, 0],
+            // ]
 
             const result = Module.runKnapsack(objFunc, constraints);
 
@@ -318,7 +407,6 @@ export async function render(formContainer, resultsContainer, Module) {
             resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
         }
     };
-
 
     // ===== INITIAL RENDER =====
     updateObjectiveFunction();
