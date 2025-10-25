@@ -215,7 +215,9 @@ export function render(formContainer, resultsContainer, Module) {
             <button style="background-color: red;" id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
         </div>
 
-        <div id="plotContainer" style="width:600px; height:400px; margin-top:20px;"></div>
+        <div style="display:flex; justify-content:center;">
+            <div id="plotContainer" style="max-width:100%; margin-left:auto; margin-right:auto;"></div>
+        </div>
   `;
 
     // ===== STATE =====
