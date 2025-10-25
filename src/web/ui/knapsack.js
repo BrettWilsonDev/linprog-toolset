@@ -38,7 +38,7 @@ export async function render(formContainer, resultsContainer, Module) {
 
         .tooltip {
             position: absolute;
-            background: #fff;
+            // background: #fff;
             border: 1px solid #999;
             padding: 6px;
             font-size: 12px;
@@ -138,6 +138,8 @@ export async function render(formContainer, resultsContainer, Module) {
                 margin-bottom: 10px;
                 text-align: center; /* Center paragraphs */
             }
+
+            svg { border: 1px solid red; width: 100%; }
     </style>
 
     <h1 style="margin-top: 60px;" style="text-align: center" class="row">Branch and Bound Knapsack</h1>
@@ -385,17 +387,17 @@ export async function render(formContainer, resultsContainer, Module) {
                 });
 
                 // Tooltip
-                node.on("mouseover", (event, d) => {
-                    tooltip.style("display", "block")
-                        .style("left", (event.pageX + 10) + "px")
-                        .style("top", (event.pageY + 10) + "px")
-                        .text(d.data.consoleOutput || "");
-                })
-                    .on("mousemove", (event) => {
-                        tooltip.style("left", (event.pageX + 10) + "px")
-                            .style("top", (event.pageY + 10) + "px");
-                    })
-                    .on("mouseout", () => tooltip.style("display", "none"));
+                // node.on("mouseover", (event, d) => {
+                //     tooltip.style("display", "block")
+                //         .style("left", (event.pageX + 10) + "px")
+                //         .style("top", (event.pageY + 10) + "px")
+                //         .text(d.data.consoleOutput || "");
+                // })
+                //     .on("mousemove", (event) => {
+                //         tooltip.style("left", (event.pageX + 10) + "px")
+                //             .style("top", (event.pageY + 10) + "px");
+                //     })
+                //     .on("mouseout", () => tooltip.style("display", "none"));
             }
 
             resultsContainer.innerHTML = "";

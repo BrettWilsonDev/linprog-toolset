@@ -271,6 +271,8 @@ export async function render(formContainer, resultsContainer, Module) {
         margin: 2px; /* Consistent spacing with other inputs */
         }
 
+        // #tree {border: 1px solid red; width: 100%;}
+        svg { border: 1px solid red; width: 100%; }
     </style>
 
     <h1 style="margin-top: 60px;" class="row">Machine Scheduling</h1>

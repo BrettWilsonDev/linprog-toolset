@@ -26,6 +26,7 @@ export async function render(formContainer, resultsContainer, Module) {
         /* Existing styles */
         #tree { width: 100%; height: 100vh; overflow: hidden; }
         svg { display: block; }
+        svg { border: 1px solid red; width: 100%; }
         .link { fill: none; stroke: #ff0000ff; stroke-width: 5px; }
         .node-box { 
             border-radius: 8px; 
@@ -260,6 +261,10 @@ export async function render(formContainer, resultsContainer, Module) {
         </div>
 
         <h1>Branch and Bound Tree</h1>
+        <p style="text-align: center; color: #FFFFFF;">Drag and zoom</p>
+        <div class="row">
+            <button hidden id="recenterButton">Recenter</button>
+        </div>
     </div>
     <div id="tree"></div>
     `;
@@ -400,6 +405,12 @@ export async function render(formContainer, resultsContainer, Module) {
         signItems = ["<=", ">="];
         signItemsChoices = [0];
         resultsContainer.innerHTML = "";
+
+        document.getElementById("recenterButton").hidden = true;
+
+        const svg = document.getElementById("tree");
+        svg.innerHTML = "";
+
         updateObjectiveFunction();
         updateConstraints();
         resetRadios();
@@ -410,10 +421,13 @@ export async function render(formContainer, resultsContainer, Module) {
     }
 
     document.getElementById("solveButton").onclick = () => {
+
         try {
+            document.getElementById("recenterButton").removeAttribute("hidden");
+
             // objFunc = [2, 3, 3, 5, 2, 4];
             // constraints = [[11, 8, 6, 14, 10, 10, 40, 0]];
-            
+
             const toggleBtn = document.getElementById('toggleBtn');
             if (toggleBtn.checked) {
                 const numConstraints = objFunc.length;
@@ -624,6 +638,10 @@ export async function render(formContainer, resultsContainer, Module) {
                 }
 
                 centerOnNodeIndex(0);
+
+                document.getElementById("recenterButton").onclick = () => {
+                    centerOnNodeIndex(0); // Center on root node with default scale
+                };
             }
 
             let jsonOut = JSON.parse(result.json);
@@ -633,6 +651,7 @@ export async function render(formContainer, resultsContainer, Module) {
             preElement.textContent = result.solution;
             resultsContainer.appendChild(preElement);
         } catch (err) {
+            document.getElementById("recenterButton").hidden = true;
             resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
         }
     };
