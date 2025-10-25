@@ -4,7 +4,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Solve optimization problems with this Linear Programming Toolset, featuring Simplex, Branch and Bound, TSP solvers, Golden Ratio Search, and more.">
+  <meta name="keywords"
+    content="linear programming, optimization tools, simplex algorithm, dual simplex, two phase simplex, branch and bound, tsp solver, golden ratio search, data envelopment analysis, hungarian algorithm, machine scheduling, sensitivity analysis">
+  <meta name="author" content="Your Name or Organization">
+  <meta name="robots" content="index, follow">
   <title>Linear Programming Toolset</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Linear Programming Toolset",
+    "description": "A free, interactive toolset for solving linear programming, integer programming, and combinatorial optimization problems, including Simplex, Branch and Bound, TSP solvers, Hungarian Algorithm, Data Envelopment Analysis, Golden Ratio Search, and more.",
+    "url": "https://linprog.bdw.run/",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Web",
+    "keywords": "linear programming, optimization tools, simplex algorithm, dual simplex, two phase simplex, branch and bound, knapsack problem solver, tsp solver, cheapest insertion tsp, nearest neighbor tsp, hungarian algorithm, data envelopment analysis, golden ratio search, machine scheduling, sensitivity analysis, linear programming duality, graphical solver, cutting plane optimization, steepest descent",
+    "featureList": [
+      "Dual Simplex Algorithm",
+      "Two Phase Simplex Solver",
+      "Graphical Linear Programming",
+      "Goal Penalties Simplex",
+      "Goal Preemptive Simplex",
+      "Math Preliminaries",
+      "Sensitivity Analysis Tool",
+      "Linear Programming Duality",
+      "Data Envelopment Analysis (DEA)",
+      "Linear Programming Modeling",
+      "Knapsack Problem Solver",
+      "Branch and Bound Simplex",
+      "Cutting Plane Optimization",
+      "Cheapest Insertion TSP",
+      "Nearest Neighbor TSP",
+      "Hungarian Algorithm Solver",
+      "Machine Scheduling Optimization",
+      "Golden Ratio Search",
+      "Steepest Descent Optimization"
+    ],
+  }
+  </script>
   <style>
     /* Generic CSS for web tools with pitch black theme and amber accents */
     * {
@@ -198,6 +236,89 @@
 
 
     }
+
+
+    /* Pitch Black Tool List Section */
+    #tool-list {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: #0a0a0a;
+      border-radius: 16px;
+      box-shadow: 0 0 12px rgba(255, 153, 0, 0.05);
+      font-family: "Inter", system-ui, sans-serif;
+      border: 1px solid #1f1f1f;
+    }
+
+    /* Section Title */
+    #tool-list h2 {
+      text-align: center;
+      color: #FF9800;
+      /* Bright amber */
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Tool List Grid */
+    #tool-list ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    /* Each Tool Card */
+    #tool-list li {
+      background: #121212;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+
+    #tool-list li:hover {
+      transform: translateY(-4px);
+      border-color: #CC3300;
+      box-shadow: 0 0 10px rgba(204, 51, 0, 0.3);
+    }
+
+    /* Tool Headings */
+    #tool-list h3 {
+      margin-top: 0;
+      margin-bottom: 0.4rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    /* Tool Links */
+    #tool-list a {
+      text-decoration: none;
+      color: #FF6600;
+      transition: color 0.2s ease, text-shadow 0.2s ease;
+    }
+
+    #tool-list a:hover {
+      color: #FFB74D;
+      text-shadow: 0 0 6px rgba(255, 153, 0, 0.6);
+    }
+
+    /* Description Text */
+    #tool-list p {
+      color: #CCCCCC;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* Bold Keywords */
+    #tool-list strong {
+      color: #FF9800;
+      font-weight: 600;
+    }
   </style>
 </head>
 
@@ -231,6 +352,100 @@
     <h1 style="margin-left: 60px;" id="title">← Select an Algorithm</h1>
     <div id="form"></div>
     <div style="margin-bottom: 10vh;" id="results">
+      <section id="tool-list" aria-label="Available Optimization Tools">
+        <h2>Available Optimization Tools</h2>
+        <ul>
+          <li>
+            <h3><a href="#" onclick="loadUI('dual_simplex')">Dual Simplex Algorithm</a></h3>
+            <p>Solves <strong>linear programming problems</strong> efficiently with the <strong>Dual Simplex
+                method</strong>, perfect for modified constraints.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('two_phase_simplex')">Two Phase Simplex Solver</a></h3>
+            <p>A two-stage <strong>Simplex algorithm</strong> for complex <strong>linear programming</strong> problems.
+            </p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('graphical_solver')">Graphical Linear Programming Solver</a></h3>
+            <p>Visualizes and solves two-variable <strong>linear programming problems</strong> using <strong>graphical
+                methods</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('goal_penalties_simplex')">Goal Penalties Simplex</a></h3>
+            <p>Handles <strong>multi-objective optimization</strong> with penalty-based <strong>goal
+                programming</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('goal_preemptive_simplex')">Goal Preemptive Simplex</a></h3>
+            <p>Prioritizes goals in <strong>linear programming</strong> with a preemptive <strong>Simplex
+                approach</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('math_preliminaries')">Math Preliminaries for Optimization</a></h3>
+            <p>Learn foundational <strong>optimization basics</strong> for understanding <strong>linear programming
+                concepts</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('sensitivity_analysis')">Sensitivity Analysis Tool</a></h3>
+            <p>Analyzes changes in <strong>linear programming</strong> solutions with <strong>sensitivity
+                analysis</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('duality')">Linear Programming Duality Solver</a></h3>
+            <p>Explores <strong>dual formulation</strong> of <strong>linear programming problems</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('dea')">Data Envelopment Analysis (DEA) Tool</a></h3>
+            <p>Measures efficiency with <strong>Data Envelopment Analysis</strong> for decision-making units.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('adding_activities_and_constraints')">Linear Programming Modeling Tool</a>
+            </h3>
+            <p>Dynamically add <strong>activities and constraints</strong> to <strong>linear programming
+                models</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('knapsack')">Knapsack Problem Solver</a></h3>
+            <p>Solves the <strong>knapsack problem</strong> using <strong>Branch and Bound</strong> for optimal
+              selection.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('branch_and_bound')">Branch and Bound Simplex</a></h3>
+            <p>Uses <strong>Branch and Bound</strong> for complex <strong>integer programming</strong> problems.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('cutting_plane')">Cutting Plane Optimization</a></h3>
+            <p>Refines solutions with <strong>cutting plane methods</strong> for <strong>integer programming</strong>.
+            </p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('cheapest_insertion_tsp')">Cheapest Insertion TSP Solver</a></h3>
+            <p>Solves the <strong>Traveling Salesman Problem</strong> with the <strong>Cheapest Insertion</strong>
+              heuristic.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('nearest_neighbor_tsp')">Nearest Neighbor TSP Solver</a></h3>
+            <p>Approximates <strong>TSP solutions</strong> using the <strong>Nearest Neighbor</strong> algorithm.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('hungarian_algorithm')">Hungarian Algorithm Solver</a></h3>
+            <p>Solves <strong>assignment problems</strong> with the <strong>Hungarian Algorithm</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('machine_scheduling')">Machine Scheduling Optimization</a></h3>
+            <p>Optimizes <strong>scheduling</strong> for machines in <strong>operations research</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('goldenratio_search')">Golden Ratio Search Calculator</a></h3>
+            <p>Performs <strong>one-dimensional optimization</strong> with the <strong>Golden Ratio Search</strong>.</p>
+          </li>
+          <li>
+            <h3><a href="#" onclick="loadUI('steepest_descent')">Steepest Descent Optimization</a></h3>
+            <p>Optimizes functions with the <strong>Steepest Descent algorithm</strong> for gradient-based solutions.
+            </p>
+          </li>
+        </ul>
+      </section>
     </div>
   </main>
 
