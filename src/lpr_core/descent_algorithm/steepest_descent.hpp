@@ -138,113 +138,261 @@ public:
         return result;
     }
 
-    double detailedStepSizeCalculation(const Point &currentPoint, const std::vector<double> &gradient)
+    // double detailedStepSizeCalculation(const Point &currentPoint, const std::vector<double> &gradient)
+    // {
+    //     oss << "    Finding optimal step size 'h':\n";
+    //     oss << "    Current point: " << pointToString(currentPoint) << "\n";
+    //     oss << "    Gradient vector: " << vecToString(gradient) << "\n";
+
+    //     std::vector<double> direction = gradient;
+    //     for (size_t i = 0; i < direction.size(); ++i)
+    //         direction[i] = maximize ? direction[i] : -direction[i];
+    //     oss << "    Direction vector (for " << (maximize ? "ascent" : "descent") << "): " << vecToString(direction) << "\n";
+    //     oss << "    Formula: x_(i+1) = x_i + h * direction\n";
+
+    //     oss << "    New point expressions:\n";
+    //     for (size_t i = 0; i < varNames.size(); ++i)
+    //     {
+    //         oss << "      " << varNames[i] << "_(i+1) = " << currentPoint[i] << " + h * (" << direction[i] << ")\n";
+    //     }
+
+    //     try
+    //     {
+    //         std::vector<std::string> newPointStr;
+    //         for (size_t i = 0; i < currentPoint.size(); ++i)
+    //         {
+    //             std::ostringstream ss;
+    //             ss << currentPoint[i] << " + h * (" << direction[i] << ")";
+    //             newPointStr.push_back(ss.str());
+    //         }
+
+    //         // 1) First pass: collect unique variables in order of appearance
+    //         std::vector<char> uniqueVars;
+    //         for (size_t i = 0; i < OGfunctionExpr.size(); ++i)
+    //         {
+    //             char c = OGfunctionExpr[i];
+    //             if (c >= 'a' && c <= 'z')
+    //             {
+    //                 bool found = false;
+    //                 for (char u : uniqueVars)
+    //                     if (u == c)
+    //                     {
+    //                         found = true;
+    //                         break;
+    //                     }
+    //                 if (!found)
+    //                     uniqueVars.push_back(c);
+    //             }
+    //         }
+
+    //         // 2) Second pass: substitute using uniqueVars -> newPointStr
+    //         std::string funcSub;
+    //         for (size_t i = 0; i < OGfunctionExpr.size(); ++i)
+    //         {
+    //             char c = OGfunctionExpr[i];
+    //             if (c >= 'a' && c <= 'z')
+    //             {
+    //                 size_t idx = 0;
+    //                 for (; idx < uniqueVars.size(); ++idx)
+    //                     if (uniqueVars[idx] == c)
+    //                         break;
+    //                 if (idx < newPointStr.size())
+    //                     funcSub += "(" + newPointStr[idx] + ")";
+    //                 else
+    //                     funcSub += c; // fallback if no replacement
+    //             }
+    //             else
+    //             {
+    //                 funcSub += c;
+    //             }
+    //         }
+
+    //         oss << "\nSubstituting new point into function f(x, y)\nOriginal function:\nSubstituting:" << OGfunctionExpr << std::endl;
+    //         for (size_t i = 0; i < newPointStr.size(); i++)
+    //         {
+    //             oss << "  " << newPointStr[i] << std::endl;
+    //         }
+    //         oss << "f(x_(i+1)) = " << funcSub << std::endl;
+
+    //         funcSub += ";";
+
+    //         Symbolic gh = SymbolicCpp::evaluateformula(funcSub);
+
+    //         Symbolic h("h");
+
+    //         Symbolic dgdh = df(gh, h); // derivative dg/dh
+
+    //         Equations sol = solve(dgdh, h);
+
+    //         oss << "g(h) (expanded) = " << gh << std::endl;
+    //         oss << "\nTaking derivative with respect to h:\ndg/dh = " << dgdh << std::endl;
+    //         oss << "Setting dg/dh = 0 to find optimal h:\nSolving: " << dgdh << " = 0" << std::endl;
+    //         oss << "h = " << sol.back().rhs << std::endl;
+
+    //         if (fabs(cleanFloat(sol.back().rhs)) < 1e-8)
+    //         {
+    //             return 0.0;
+    //         }
+
+    //         return cleanFloat(sol.back().rhs);
+    //     }
+    //     catch (...)
+    //     {
+    //         oss << "Symbolic expression could not be evaluated falling back to golden section search" << std::endl;
+    //     }
+
+    //     double hGoldRatio = performGoldenSectionSearch(currentPoint, direction, -2.0, 2.0, 1e-8);
+    //     oss << "    Selected step size h = " << hGoldRatio << "\n";
+    //     return cleanFloat(hGoldRatio);
+    // }
+
+double detailedStepSizeCalculation(const Point &currentPoint, const std::vector<double> &gradient)
+{
+    oss << "    Finding optimal step size 'h':\n";
+    oss << "    Current point: " << pointToString(currentPoint) << "\n";
+    oss << "    Gradient vector: " << vecToString(gradient) << "\n";
+
+    std::vector<double> direction = gradient;
+    for (size_t i = 0; i < direction.size(); ++i)
+        direction[i] = maximize ? direction[i] : -direction[i];
+    oss << "    Direction vector (for " << (maximize ? "ascent" : "descent") << "): " << vecToString(direction) << "\n";
+    oss << "    Formula: x_(i+1) = x_i + h * direction\n";
+
+    oss << "    New point expressions:\n";
+    for (size_t i = 0; i < varNames.size(); ++i)
     {
-        oss << "    Finding optimal step size 'h':\n";
-        oss << "    Current point: " << pointToString(currentPoint) << "\n";
-        oss << "    Gradient vector: " << vecToString(gradient) << "\n";
-
-        std::vector<double> direction = gradient;
-        for (size_t i = 0; i < direction.size(); ++i)
-            direction[i] = maximize ? direction[i] : -direction[i];
-        oss << "    Direction vector (for " << (maximize ? "ascent" : "descent") << "): " << vecToString(direction) << "\n";
-        oss << "    Formula: x_(i+1) = x_i + h * direction\n";
-
-        oss << "    New point expressions:\n";
-        for (size_t i = 0; i < varNames.size(); ++i)
-        {
-            oss << "      " << varNames[i] << "_(i+1) = " << currentPoint[i] << " + h * (" << direction[i] << ")\n";
-        }
-
-        try
-        {
-            std::vector<std::string> newPointStr;
-            for (size_t i = 0; i < currentPoint.size(); ++i)
-            {
-                std::ostringstream ss;
-                ss << currentPoint[i] << " + h * (" << direction[i] << ")";
-                newPointStr.push_back(ss.str());
-            }
-
-            // 1) First pass: collect unique variables in order of appearance
-            std::vector<char> uniqueVars;
-            for (size_t i = 0; i < OGfunctionExpr.size(); ++i)
-            {
-                char c = OGfunctionExpr[i];
-                if (c >= 'a' && c <= 'z')
-                {
-                    bool found = false;
-                    for (char u : uniqueVars)
-                        if (u == c)
-                        {
-                            found = true;
-                            break;
-                        }
-                    if (!found)
-                        uniqueVars.push_back(c);
-                }
-            }
-
-            // 2) Second pass: substitute using uniqueVars -> newPointStr
-            std::string funcSub;
-            for (size_t i = 0; i < OGfunctionExpr.size(); ++i)
-            {
-                char c = OGfunctionExpr[i];
-                if (c >= 'a' && c <= 'z')
-                {
-                    size_t idx = 0;
-                    for (; idx < uniqueVars.size(); ++idx)
-                        if (uniqueVars[idx] == c)
-                            break;
-                    if (idx < newPointStr.size())
-                        funcSub += "(" + newPointStr[idx] + ")";
-                    else
-                        funcSub += c; // fallback if no replacement
-                }
-                else
-                {
-                    funcSub += c;
-                }
-            }
-
-            oss << "\nSubstituting new point into function f(x, y)\nOriginal function:\nSubstituting:" << OGfunctionExpr << std::endl;
-            for (size_t i = 0; i < newPointStr.size(); i++)
-            {
-                oss << "  " << newPointStr[i] << std::endl;
-            }
-            oss << "f(x_(i+1)) = " << funcSub << std::endl;
-
-            funcSub += ";";
-
-            Symbolic gh = SymbolicCpp::evaluateformula(funcSub);
-
-            Symbolic h("h");
-
-            Symbolic dgdh = df(gh, h); // derivative dg/dh
-
-            Equations sol = solve(dgdh, h);
-
-            oss << "g(h) (expanded) = " << gh << std::endl;
-            oss << "\nTaking derivative with respect to h:\ndg/dh = " << dgdh << std::endl;
-            oss << "Setting dg/dh = 0 to find optimal h:\nSolving: " << dgdh << " = 0" << std::endl;
-            oss << "h = " << sol.back().rhs << std::endl;
-
-            if (fabs(cleanFloat(sol.back().rhs)) < 1e-8)
-            {
-                return 0.0;
-            }
-
-            return cleanFloat(sol.back().rhs);
-        }
-        catch (...)
-        {
-            oss << "Symbolic expression could not be evaluated falling back to golden section search" << std::endl;
-        }
-
-        double hGoldRatio = performGoldenSectionSearch(currentPoint, direction, -2.0, 2.0, 1e-8);
-        oss << "    Selected step size h = " << hGoldRatio << "\n";
-        return cleanFloat(hGoldRatio);
+        oss << "      " << varNames[i] << "_(i+1) = " << currentPoint[i] << " + h * (" << direction[i] << ")\n";
     }
+
+    try
+    {
+        std::vector<std::string> newPointStr;
+        for (size_t i = 0; i < currentPoint.size(); ++i)
+        {
+            std::ostringstream ss;
+            ss << currentPoint[i] << " + h * (" << direction[i] << ")";
+            newPointStr.push_back(ss.str());
+        }
+
+        // 1) First pass: collect unique variables in order of appearance, excluding 'e'
+        std::vector<char> uniqueVars;
+        for (size_t i = 0; i < OGfunctionExpr.size(); ++i)
+        {
+            char c = OGfunctionExpr[i];
+            if (c >= 'a' && c <= 'z' && c != 'e') // Exclude 'e' from variable substitution
+            {
+                bool found = false;
+                for (char u : uniqueVars)
+                    if (u == c)
+                    {
+                        found = true;
+                        break;
+                    }
+                if (!found)
+                    uniqueVars.push_back(c);
+            }
+        }
+
+        // 2) Second pass: substitute using uniqueVars -> newPointStr
+        std::string funcSub;
+        for (size_t i = 0; i < OGfunctionExpr.size(); ++i)
+        {
+            char c = OGfunctionExpr[i];
+            if (c >= 'a' && c <= 'z' && c != 'e') // Substitute only non-'e' variables
+            {
+                size_t idx = 0;
+                for (; idx < uniqueVars.size(); ++idx)
+                    if (uniqueVars[idx] == c)
+                        break;
+                if (idx < newPointStr.size())
+                    funcSub += "(" + newPointStr[idx] + ")";
+                else
+                    funcSub += c; // fallback if no replacement
+            }
+            else
+            {
+                funcSub += c; // Keep 'e' and other characters unchanged
+            }
+        }
+
+        oss << "\nSubstituting new point into function f(x, y)\nOriginal function: " << OGfunctionExpr << std::endl;
+        for (size_t i = 0; i < newPointStr.size(); i++)
+        {
+            oss << "  " << newPointStr[i] << std::endl;
+        }
+        oss << "f(x_(i+1)) = " << funcSub << std::endl;
+
+        funcSub += ";";
+
+        Symbolic gh = SymbolicCpp::evaluateformula(funcSub);
+
+        Symbolic h("h");
+
+        Symbolic dgdh = df(gh, h); // derivative dg/dh
+
+        Equations sol = solve(dgdh, h);
+
+        oss << "g(h) (expanded) = " << gh << std::endl;
+        oss << "\nTaking derivative with respect to h:\ndg/dh = " << dgdh << std::endl;
+        oss << "Setting dg/dh = 0 to find optimal h:\nSolving: " << dgdh << " = 0" << std::endl;
+        oss << "h = " << sol.back().rhs << std::endl;
+
+        // Convert symbolic expression to string
+        std::ostringstream h_stream;
+        h_stream << sol.back().rhs;
+        std::string h_expr = h_stream.str();
+
+        // Replace 'e' with '2.718281828' in the string, ensuring it's not part of another word
+        std::string substituted_h_expr;
+        size_t pos = 0;
+        while (pos < h_expr.size())
+        {
+            if (h_expr[pos] == 'e' && 
+                (pos == 0 || !isalnum(h_expr[pos - 1])) && // Ensure 'e' is not part of a word
+                (pos + 1 == h_expr.size() || !isalnum(h_expr[pos + 1])))
+            {
+                substituted_h_expr += "2.718281828";
+                pos++;
+            }
+            else
+            {
+                substituted_h_expr += h_expr[pos];
+                pos++;
+            }
+        }
+
+        // oss << "h (after replacing e with 2.718281828) = " << substituted_h_expr << std::endl;
+
+        // Create an lvalue for the expression to avoid rvalue issues
+        std::string substituted_h_expr_with_semicolon = substituted_h_expr + ";";
+
+        // Re-parse the substituted expression into a Symbolic object
+        Symbolic substituted_h = SymbolicCpp::evaluateformula(substituted_h_expr_with_semicolon);
+
+        double h_value = cleanFloat(substituted_h);
+
+        if (fabs(h_value) < 1e-8)
+        {
+            oss << "    Step size h is near zero (" << h_value << "), returning 0.0\n";
+            return 0.0;
+        }
+
+        oss << "    Selected step size h = " << h_value << "\n";
+        return h_value;
+    }
+    catch (const std::exception& ex)
+    {
+        oss << "Symbolic expression could not be evaluated: " << ex.what() << "\nFalling back to golden section search\n";
+    }
+    catch (...)
+    {
+        oss << "Symbolic expression could not be evaluated (unknown error). Falling back to golden section search\n";
+    }
+
+    double hGoldRatio = performGoldenSectionSearch(currentPoint, direction, -2.0, 2.0, 1e-8);
+    oss << "    Selected step size h = " << hGoldRatio << "\n";
+    return cleanFloat(hGoldRatio);
+}
 
     std::tuple<Point, double, std::vector<std::map<std::string, std::string>>> optimize(const Point &initialPoint, int maxIterations = 100, double tolerance = 1e-6)
     {
@@ -252,7 +400,8 @@ public:
         std::vector<std::map<std::string, std::string>> history;
 
         std::string method = maximize ? "Steepest Ascent" : "Steepest Descent";
-        oss << "\n" << std::string(80, '=') << "\n";
+        oss << "\n"
+            << std::string(80, '=') << "\n";
         oss << method << " Algorithm - Detailed Steps\n";
         oss << std::string(80, '=') << "\n";
         oss << "Function: f(";
@@ -344,7 +493,8 @@ public:
 
         double optimalValue = evaluateFunction(currentPoint);
 
-        oss << "\n" << std::string(80, '=') << "\n";
+        oss << "\n"
+            << std::string(80, '=') << "\n";
         oss << " FINAL RESULTS\n";
         oss << std::string(80, '=') << "\n";
         std::ostringstream fp;
@@ -646,15 +796,15 @@ public:
         }
     }
 
-    const std::string& getOutput() const
+    const std::string &getOutput() const
     {
         return output;
     }
 
     void test()
     {
-        // DoSteepestDescent("2*x*y + 4*x - 2*x^2 - y^2", {"x", "y"}, {0.5, 0.5}, true);
-        DoSteepestDescent("x^2 + y^2 + 2*x + 4", {"x", "y"}, {2, 1}, false);
+        DoSteepestDescent("2*x*y + 4*x - 2*x^2 - y^2", {"x", "y"}, {0.5, 0.5}, true);
+        // DoSteepestDescent("x^2 + y^2 + 2*x + 4", {"x", "y"}, {2, 1}, false);
         // DoSteepestDescent("x^2 + y^2 + 2*x + 4 + z", {"x", "y", "z"}, {2, 1, 3}, false);
     }
 

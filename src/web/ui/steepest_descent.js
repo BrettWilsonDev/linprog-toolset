@@ -1,5 +1,4 @@
 export function render(formContainer, resultsContainer, Module) {
-    // Insert HTML with input section using default browser styles
     formContainer.innerHTML = `
         <style>
             /* Wrapper to center all content */
@@ -239,6 +238,9 @@ export function render(formContainer, resultsContainer, Module) {
             </div>
         </div>
         <div class="row">
+            <button onclick="window.location.href = './src/web/ui/python/steepest-descent/';">Sympy Version</button>
+        </div>
+        <div class="row">
             <button id="solveButton">Solve</button>
             <button style="background-color: red;" id="resetButton">Reset</button>
         </div>
@@ -280,9 +282,26 @@ export function render(formContainer, resultsContainer, Module) {
         radio.onchange = updateProblemType;
     });
 
+    function handleImplicitMultiplication(func) {
+        // Protect math functions by replacing them temporarily
+        const mathFunctions = /\b(sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|log|ln|exp|sqrt|abs)\b/gi;
+        let modifiedFunc = func.replace(mathFunctions, match => `_${match}_`);
+
+        // Match numbers followed by variables (e.g., 2x, 22xy) and insert * between number and variables
+        modifiedFunc = modifiedFunc.replace(/(\d+)([a-zA-Z]+)/g, '$1*$2');
+
+        // Restore protected math functions
+        modifiedFunc = modifiedFunc.replace(/_(sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|log|ln|exp|sqrt|abs)_/gi, '$1');
+
+        return modifiedFunc;
+    }
+
     // Function input event listener
     document.getElementById("funcInput").addEventListener("input", (event) => {
         func = event.target.value;
+
+        func = handleImplicitMultiplication(func);
+
         // Remove common math functions to avoid false positives
         const mathFunctions = /\b(sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|log|ln|exp|sqrt|abs)\b/gi;
         const cleanFunc = func.replace(mathFunctions, '');
@@ -311,21 +330,22 @@ export function render(formContainer, resultsContainer, Module) {
         func = document.getElementById("funcInput").value;
 
         // func = "x^2 + y^2 + 2*x + 4 "
-        
+
+        func = handleImplicitMultiplication(func);
+
+        func = func.replace(/\*\*/g, '^');
+
 
         // Extract variables, excluding math functions
         const mathFunctions = /\b(sin|cos|tan|asin|acos|atan|sinh|cosh|tanh|log|ln|exp|sqrt|abs)\b/gi;
         const cleanFunc = func.replace(mathFunctions, '');
         const regex = /\b[a-zA-Z]+\b/g;
         const variables = Array.from(new Set(cleanFunc.match(regex) || []));
-        // console.log("Variables:", variables);
 
-        // Collect points values
         points = Array.from(document.querySelectorAll(".pointInput")).map(input => parseFloat(input.value) || 0);
 
 
-        // points = [2, 1]
-        // console.log("Points:", points);
+        // console.log(func);
 
         try {
             if (!func) {

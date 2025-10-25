@@ -248,8 +248,10 @@ export async function render(formContainer, resultsContainer, Module) {
 
         <div id="constraintsContainer"></div>
 
-        <div id="toggleContainer" class="row">
-            <label><input type="checkbox" id="toggleBtn" checked> Assume Binary</label>
+        <div style="margin-top: 20px;">
+            <div  id="toggleContainer" class="row">
+                <label><input type="checkbox" id="toggleBtn" checked> Assume Binary</label>
+            </div>
         </div>
 
         <div class="row">
@@ -336,8 +338,10 @@ export async function render(formContainer, resultsContainer, Module) {
         const toggleContainer = document.getElementById('toggleContainer');
         if (amtOfConstraints == 1) {
             toggleContainer.style.display = 'flex';
+            document.getElementById('toggleBtn').checked = true;
         } else {
             toggleContainer.style.display = 'none';
+            document.getElementById('toggleBtn').checked = false;
         }
     }
 

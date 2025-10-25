@@ -279,8 +279,10 @@ export function render(formContainer, resultsContainer, Module) {
         <label><input type="radio" name="lockOptTab" value="Off" checked> Range Analyzer Off</label>
     </div>
     <br>
-    <input type="number" id="valueRangeInput" step="any" placeholder="0" style="display: none;">
-    <p id="valueRangeText"></p>
+    <div class="row">
+        <input type="number" id="valueRangeInput" step="any" placeholder="0" style="display: none;">
+        <p id="valueRangeText"></p>
+    </div>
     <br>
     <div class="row">
         <label><input type="radio" name="solveDelta" value="On"> solve Delta On</label>
