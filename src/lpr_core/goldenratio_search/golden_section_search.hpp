@@ -32,7 +32,7 @@ public:
         output.clear();
     }
 
-    double DoGoldenRatioSearch(const std::string &func, double xLower, double xUpper, double tol, bool findMin = false)
+    double DoGoldenRatioSearch(const std::string &func, double xLower, double xUpper, double tol, bool findMin = false, int maxIter = 100)
     {
         oss << "\nFunction: " << func << "\n";
 
@@ -71,6 +71,11 @@ public:
 
         while (e > tol)
         {
+            if (iter == maxIter)
+            {
+                break;
+            }
+
             if ((findMin && fc > fd) || (!findMin && fc < fd))
             {
                 a = c;

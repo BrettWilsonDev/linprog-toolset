@@ -637,17 +637,18 @@ emscripten::val runMachineSchedulingPenaltyScheduler(emscripten::val jsJobData, 
     return jsResult;
 }
 
-emscripten::val runGoldenSectionSearch(emscripten::val jsFunction, emscripten::val jsXLower, emscripten::val jsXUpper, emscripten::val jsTol, emscripten::val jsIsMin)
+emscripten::val runGoldenSectionSearch(emscripten::val jsFunction, emscripten::val jsXLower, emscripten::val jsXUpper, emscripten::val jsTol, emscripten::val jsIsMin, emscripten::val jsMaxIter)
 {
     std::string function = jsFunction.as<std::string>();
     double xLower = jsXLower.as<double>();
     double xUpper = jsXUpper.as<double>();
     double tol = jsTol.as<double>();
     bool isMin = jsIsMin.as<bool>();
+    int maxIter = jsMaxIter.as<int>();
 
     GoldenSectionSearch solver(verbose);
 
-    solver.DoGoldenRatioSearch(function, xLower, xUpper, tol, isMin);
+    solver.DoGoldenRatioSearch(function, xLower, xUpper, tol, isMin, maxIter);
 
     emscripten::val jsResult = emscripten::val::object();
 

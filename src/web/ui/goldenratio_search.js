@@ -219,6 +219,10 @@ export function render(formContainer, resultsContainer, Module) {
                     <label>tol</label>
                     <input type="number" id="tolInput" value="0.05" step="any">
                 </div>
+                <div class="row">
+                    <label>Max Iterations</label>
+                    <input type="number" id="maxIterationsInput" value="100" step="any">
+                </div>
             </div>
         </div>
         <div class="row">
@@ -324,6 +328,11 @@ export function render(formContainer, resultsContainer, Module) {
         params[2] = parseFloat(event.target.value) || 0.05;
     });
 
+    document.getElementById("maxIterationsInput").addEventListener("input", (event) => {
+        params[3] = parseInt(event.target.value) || 100;
+    });
+
+
     function resetRadios() {
         document.querySelector('input[value="Max"]').checked = true;
     }
@@ -331,11 +340,12 @@ export function render(formContainer, resultsContainer, Module) {
     document.getElementById("resetButton").onclick = () => {
         problemType = "Max";
         func = "";
-        params = [0.0, 1.0, 0.05];
+        params = [0.0, 1.0, 0.05, 100];
         document.getElementById("funcInput").value = "";
         document.getElementById("xLowerInput").value = "0.0";
         document.getElementById("xUpperInput").value = "1.0";
         document.getElementById("tolInput").value = "0.05";
+        document.getElementById("maxIterationsInput").value = "100";
         resetRadios();
         resultsContainer.innerHTML = "";
     };
@@ -352,7 +362,7 @@ export function render(formContainer, resultsContainer, Module) {
                 throw new Error("Invalid parameters");
             }
             const isMin = (problemType === "Min");
-            const result = Module.runGoldenSectionSearch(func, params[0], params[1], params[2], isMin);
+            const result = Module.runGoldenSectionSearch(func, params[0], params[1], params[2], isMin, params[3] + 1);
             resultsContainer.innerHTML = generateTableFromOutput(result.outputString);
         } catch (err) {
             resultsContainer.innerHTML = `<p style="color: red;">Error: ${err.message}</p>`;
