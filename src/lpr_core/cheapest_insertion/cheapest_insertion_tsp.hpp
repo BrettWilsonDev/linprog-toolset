@@ -108,6 +108,8 @@ public:
             oss << " = 1\n";
         }
 
+        oss << "\nLeaving once in each city constraints:\n";
+
         // Each city is left exactly once
         for (size_t i = 0; i < n; ++i)
         {
