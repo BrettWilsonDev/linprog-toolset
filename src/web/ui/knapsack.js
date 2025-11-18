@@ -3,7 +3,8 @@ export async function render(formContainer, resultsContainer, Module) {
     if (typeof window.d3 === "undefined") {
         await new Promise((resolve, reject) => {
             const script = document.createElement("script");
-            script.src = "https://d3js.org/d3.v7.min.js";
+            // script.src = "https://d3js.org/d3.v7.min.js";
+            script.src = "../../../vendor/d3js/d3.v7.min.js";
             script.onload = resolve;
             script.onerror = reject;
             document.head.appendChild(script);

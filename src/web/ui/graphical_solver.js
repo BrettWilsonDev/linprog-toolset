@@ -1,7 +1,8 @@
 export function render(formContainer, resultsContainer, Module) {
     if (typeof Plotly === "undefined") {
         const script = document.createElement("script");
-        script.src = "https://cdn.plot.ly/plotly-latest.min.js";
+        // script.src = "https://cdn.plot.ly/plotly-latest.min.js";
+        script.src = "../../../vendor/plotly/plotly-latest.min.js";
         script.onload = () => console.log("Plotly loaded!");
         document.head.appendChild(script);
     }
