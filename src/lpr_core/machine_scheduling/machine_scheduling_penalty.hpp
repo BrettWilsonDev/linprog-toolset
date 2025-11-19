@@ -65,70 +65,146 @@ private:
         return total;
     }
 
-    std::string getProblemNumber(const std::vector<std::string> &currentSequence, int jobId, int position)
+    // std::string getProblemNumber(const std::vector<std::string> &currentSequence, int jobId, int position)
+    // {
+    //     if (currentSequence.empty())
+    //     {
+    //         return std::to_string(jobId);
+    //     }
+    //     else
+    //     {
+    //         std::vector<std::string> parts;
+
+    //         // Get the root job from first selection
+    //         int firstJobId = std::stoi(currentSequence[0].substr(1, 1)); // Extract job ID from x14, x24, etc.
+    //         parts.push_back(std::to_string(firstJobId));
+
+    //         // For subsequent levels, determine the order based on available jobs
+    //         std::vector<int> tempPicked(jobs.size(), 0);
+
+    //         // Simulate the sequence to this point
+    //         for (const auto &seqItem : currentSequence)
+    //         {
+    //             int seqJobId = std::stoi(seqItem.substr(1, 1)); // Extract job ID
+    //             for (size_t j = 0; j < jobs.size(); ++j)
+    //             {
+    //                 if (jobs[j].id == seqJobId)
+    //                 {
+    //                     tempPicked[j] = 1;
+    //                     break;
+    //                 }
+    //             }
+    //         }
+
+    //         // Find available jobs at this level
+    //         std::vector<int> availableJobs;
+    //         for (size_t j = 0; j < jobs.size(); ++j)
+    //         {
+    //             if (tempPicked[j] == 0)
+    //             {
+    //                 availableJobs.push_back(jobs[j].id);
+    //             }
+    //         }
+    //         std::sort(availableJobs.begin(), availableJobs.end());
+
+    //         // Find position of current job in available jobs
+    //         if (!availableJobs.empty())
+    //         {
+    //             auto it = std::find(availableJobs.begin(), availableJobs.end(), jobId);
+    //             if (it != availableJobs.end())
+    //             {
+    //                 int jobPosition = std::distance(availableJobs.begin(), it) + 1;
+    //                 parts.push_back(std::to_string(jobPosition));
+    //             }
+    //             else
+    //             {
+    //                 parts.push_back("1");
+    //             }
+    //         }
+
+    //         std::string result = parts[0];
+    //         for (size_t i = 1; i < parts.size(); ++i)
+    //         {
+    //             result += "." + parts[i];
+    //         }
+    //         return result;
+    //     }
+    // }
+
+    std::string getProblemNumber(const std::vector<std::string> &currentSequence, int nextJobId, int position)
     {
         if (currentSequence.empty())
         {
-            return std::to_string(jobId);
+            return std::to_string(nextJobId);
+        }
+
+        std::vector<int> path;
+        std::vector<int> picked(jobs.size(), 0);
+
+        // Replay the entire currentSequence to determine the branch index at each level
+        for (const auto &seqItem : currentSequence)
+        {
+            int jobId = std::stoi(seqItem.substr(1, 1)); // extract job number from x14, x33, etc.
+
+            // Get available jobs at this point in history
+            std::vector<int> available;
+            for (size_t i = 0; i < jobs.size(); ++i)
+            {
+                if (!picked[i])
+                {
+                    available.push_back(jobs[i].id);
+                }
+            }
+            std::sort(available.begin(), available.end());
+
+            // Find where this jobId was in the sorted list → that's its branch number
+            auto it = std::find(available.begin(), available.end(), jobId);
+            if (it != available.end())
+            {
+                int branchPos = std::distance(available.begin(), it) + 1;
+                path.push_back(branchPos);
+            }
+
+            // Mark as picked
+            for (size_t i = 0; i < jobs.size(); ++i)
+            {
+                if (jobs[i].id == jobId)
+                {
+                    picked[i] = 1;
+                    break;
+                }
+            }
+        }
+
+        // Now add the branch position for the *next* job (the one we're considering)
+        std::vector<int> available;
+        for (size_t i = 0; i < jobs.size(); ++i)
+        {
+            if (!picked[i])
+            {
+                available.push_back(jobs[i].id);
+            }
+        }
+        std::sort(available.begin(), available.end());
+
+        auto it = std::find(available.begin(), available.end(), nextJobId);
+        if (it != available.end())
+        {
+            int branchPos = std::distance(available.begin(), it) + 1;
+            path.push_back(branchPos);
         }
         else
         {
-            std::vector<std::string> parts;
-
-            // Get the root job from first selection
-            int firstJobId = std::stoi(currentSequence[0].substr(1, 1)); // Extract job ID from x14, x24, etc.
-            parts.push_back(std::to_string(firstJobId));
-
-            // For subsequent levels, determine the order based on available jobs
-            std::vector<int> tempPicked(jobs.size(), 0);
-
-            // Simulate the sequence to this point
-            for (const auto &seqItem : currentSequence)
-            {
-                int seqJobId = std::stoi(seqItem.substr(1, 1)); // Extract job ID
-                for (size_t j = 0; j < jobs.size(); ++j)
-                {
-                    if (jobs[j].id == seqJobId)
-                    {
-                        tempPicked[j] = 1;
-                        break;
-                    }
-                }
-            }
-
-            // Find available jobs at this level
-            std::vector<int> availableJobs;
-            for (size_t j = 0; j < jobs.size(); ++j)
-            {
-                if (tempPicked[j] == 0)
-                {
-                    availableJobs.push_back(jobs[j].id);
-                }
-            }
-            std::sort(availableJobs.begin(), availableJobs.end());
-
-            // Find position of current job in available jobs
-            if (!availableJobs.empty())
-            {
-                auto it = std::find(availableJobs.begin(), availableJobs.end(), jobId);
-                if (it != availableJobs.end())
-                {
-                    int jobPosition = std::distance(availableJobs.begin(), it) + 1;
-                    parts.push_back(std::to_string(jobPosition));
-                }
-                else
-                {
-                    parts.push_back("1");
-                }
-            }
-
-            std::string result = parts[0];
-            for (size_t i = 1; i < parts.size(); ++i)
-            {
-                result += "." + parts[i];
-            }
-            return result;
+            path.push_back(1); // fallback
         }
+
+        // Build dotted string: 4.3.1 etc.
+        std::string result = std::to_string(path[0]);
+        for (size_t i = 1; i < path.size(); ++i)
+        {
+            result += "." + std::to_string(path[i]);
+        }
+        return result;
     }
 
     void branch(int position, int currentPenalty, std::vector<std::string> currentSequence)

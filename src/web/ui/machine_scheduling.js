@@ -730,11 +730,15 @@ export async function render(formContainer, resultsContainer, Module) {
             if (penaltiesEnabled) {
                 const result = Module.runMachineSchedulingPenaltyScheduler(jobData, penalties);
                 const data = JSON.parse(result.json);
+                console.log(data);
+                
                 MachineSchedulingPenaltySchedulerD3(data);
             }
             else {
                 const result = Module.runMachineSchedulingTardinessScheduler(jobData);
                 const data = JSON.parse(result.json);
+
+                console.log(data);
                 MachineSchedulingTardinessSchedulerD3(data);
             }
         } catch (err) {
