@@ -59,6 +59,7 @@ export async function render(formContainer, resultsContainer, Module) {
                 margin-bottom: 15px;
                 align-items: center;
                 justify-content: center; /* Center items in the row */
+                flex-wrap: wrap;
             }
             button {
                 background: #333333; /* Dark gray base */
@@ -126,6 +127,7 @@ export async function render(formContainer, resultsContainer, Module) {
                 margin-bottom: 10px;
                 align-items: center;
                 justify-content: center; /* Center constraint rows */
+                flex-wrap: wrap;
             }
 
             h1, h2, h3, h4 {

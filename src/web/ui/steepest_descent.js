@@ -39,6 +39,7 @@ export function render(formContainer, resultsContainer, Module) {
                 margin-bottom: 15px; 
                 align-items: center;
                 justify-content: center; /* Center items in the row */
+                flex-wrap: wrap;
             }
             button {
                 background: #333333;
@@ -181,6 +182,7 @@ export function render(formContainer, resultsContainer, Module) {
                 margin-bottom: 10px;
                 align-items: center;
                 justify-content: center; /* Center constraint rows */
+                flex-wrap: wrap;
             }
             // #results {
             //     background: #1A1A1A;

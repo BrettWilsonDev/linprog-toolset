@@ -20,6 +20,7 @@ export function render(formContainer, resultsContainer, Module) {
             margin-bottom: 15px; /* Space between rows */
             align-items: center;
             justify-content: center; /* Center items in the row */
+            flex-wrap: wrap;
         }
         button {
             background: #333333; /* Dark gray base */
@@ -132,6 +133,7 @@ export function render(formContainer, resultsContainer, Module) {
             margin-bottom: 10px;
             align-items: center;
             justify-content: center; /* Center constraint rows */
+            flex-wrap: wrap;
         }
         #output, #results {
             background: #1A1A1A;
