@@ -420,6 +420,16 @@ public:
                                                    return a.detourCost < b.detourCost;
                                                });
 
+            oss << "\n>>> CHEAPEST INSERTION CHOSEN <<<" << "\n";
+            oss << "Insert " << cities.at(bestOption->city) 
+                << " after position " << bestOption->insertPosition 
+                << " (between City " << bestOption->newRoute[bestOption->insertPosition-1] 
+                << " and City " << bestOption->newRoute[bestOption->insertPosition] << ")\n";
+            oss << "Detour cost: " << std::fixed << std::setprecision(0) << bestOption->detourCost << "\n";
+            oss << "Replacing: " << bestOption->routePart << "\n";
+            oss << "With     : " << bestOption->detourPart << "\n";
+            oss << bestOption->calcPart << "\n\n";
+
             route = bestOption->newRoute;
             remainingCities.erase(
                 std::remove(remainingCities.begin(), remainingCities.end(), bestOption->city),
