@@ -213,7 +213,7 @@ export function render(formContainer, resultsContainer, Module) {
         <button class="btn" id="removeConstraintBtn">Constraint -</button>
     </div>
 
-    <div class="row" id="constraintsContainer"></div>
+    <div id="constraintsContainer"></div>
 
     <div class="row">
         <button style="margin-bottom: 20px;" class="btn" id="toggleGoalOrderBtn">Show Goal Order</button>

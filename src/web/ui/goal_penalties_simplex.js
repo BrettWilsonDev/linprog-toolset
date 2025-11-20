@@ -213,7 +213,7 @@ export function render(formContainer, resultsContainer, Module) {
         <button class="btn" id="removeConstraintBtn">Constraint -</button>
     </div>
 
-    <div class="row" id="constraintsContainer"></div>
+    <div id="constraintsContainer"></div>
 
     <h3 class="row">Penalties</h3>
     <div class="row" style="margin-bottom: 20px;" id="penaltiesContainer"></div>
