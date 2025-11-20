@@ -12,7 +12,6 @@ export function render(formContainer, resultsContainer, Module) {
             margin: 0 auto;
             padding: 20px;
         }
-
         /* Existing styles */
         .row {
             display: flex;
@@ -120,12 +119,10 @@ export function render(formContainer, resultsContainer, Module) {
         p {
             color: #FFFFFF;
             margin-bottom: 10px;
-            // text-align: center; /* Center paragraphs */
         }
         h1, h3, h4 {
             color: #CC3300; /* Deep orange headings */
             margin-bottom: 10px;
-            // text-align: center; /* Center headings */
         }
         .constraint {
             display: flex;
@@ -141,14 +138,10 @@ export function render(formContainer, resultsContainer, Module) {
             padding: 10px;
             border-radius: 4px;
             color: #FFFFFF;
-            // text-align: center; /* Center text in output/results */
         }
         table {
             border-collapse: collapse;
-            // border: none;
             margin-bottom: 15px;
-            // color: #FFFFFF;
-            // margin-left: auto; /* Center table */
             margin-right: auto;
         }
         th, td {
@@ -161,8 +154,7 @@ export function render(formContainer, resultsContainer, Module) {
             color: #CC3300; /* Deep orange table headers */
         }
         .pivot {
-            // background-color: #4CAF50; /* Green for pivot highlighting */
-            background-color: #CC3300; /* Green for pivot highlighting */
+            background-color: #CC3300;
         }
         @media (max-width: 600px) {
             .row {
@@ -185,54 +177,55 @@ export function render(formContainer, resultsContainer, Module) {
                 height: 7px;
             }
         }
-
         .btn {
             margin: 5px;
         }
-    </style>
+        </style>
+        <h1 style="margin-top: 60px;" class="row">Goal Simplex Preemptive / Penalties</h1>
+        <div class="row">
+            <button class="btn" id="addDecisionVarBtn">Decision Variable +</button>
+            <button class="btn" id="removeDecisionVarBtn">Decision Variable -</button>
+        </div>
+        <h3 class="row">Goal Constraints</h3>
+        <div class="row">
+            <button style="margin-bottom: 20px;" class="btn" id="addGoalConstraintBtn">Goal Constraint +</button>
+            <button style="margin-bottom: 20px;" class="btn" id="removeGoalConstraintBtn">Goal Constraint -</button>
+        </div>
+        <br>
+        <div id="goalConstraintsContainer"></div>
+        <h3 class="row">Normal Constraints</h3>
+        <div class="row">
+            <button class="btn" id="addConstraintBtn">Constraint +</button>
+            <button class="btn" id="removeConstraintBtn">Constraint -</button>
+        </div>
+        <div id="constraintsContainer"></div>
 
-    <h1 style="margin-top: 60px;" class="row">Goal Simplex Penalties</h1>
+        <!-- ONLY ADDED PART START -->
+        <div class="row" style="margin: 30px 0; justify-content: center;">
+            <label style="color: #CC3300; font-size: 1.2rem; font-weight: bold; cursor: pointer;">
+                <input type="checkbox" id="penaltiesToggle" style="transform: scale(1.4); margin-right: 12px;">
+                Enable Penalties
+            </label>
+        </div>
 
-    <div class="row">
-        <button class="btn" id="addDecisionVarBtn">Decision Variable +</button>
-        <button class="btn" id="removeDecisionVarBtn">Decision Variable -</button>
-    </div>
+        <div id="penaltiesWrapper" style="display: none;">
+            <h3 class="row">Penalties</h3>
+            <div class="row" style="margin-bottom: 20px;" id="penaltiesContainer"></div>
+        </div>
+        <!-- ONLY ADDED PART END -->
 
-    <h3 class="row">Goal Constraints</h3>
-    <div class="row">
-        <button style="margin-bottom: 20px;" class="btn" id="addGoalConstraintBtn">Goal Constraint +</button>
-        <button style="margin-bottom: 20px;" class="btn" id="removeGoalConstraintBtn">Goal Constraint -</button>
-    </div>
-
-    <br>
-    <div id="goalConstraintsContainer"></div>
-
-    <h3 class="row">Normal Constraints</h3>
-    <div class="row">
-        <button class="btn" id="addConstraintBtn">Constraint +</button>
-        <button class="btn" id="removeConstraintBtn">Constraint -</button>
-    </div>
-
-    <div id="constraintsContainer"></div>
-
-    <h3 class="row">Penalties</h3>
-    <div class="row" style="margin-bottom: 20px;" id="penaltiesContainer"></div>
-
-    <div class="row">
-        <button style="margin-bottom: 20px;" class="btn" id="toggleGoalOrderBtn">Show Goal Order</button>
-    </div>
-
-    <div class="row">
-        <div class="row" id="goalOrderContainer" style="display: none;"></div>
-    </div>
-
-    <div class="row">
-        <button id="solveButton">Solve</button>
-        <button style="background-color: red;" id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
-    </div>
-
-    <div id="tableauContainer"></div>
-  `;
+        <div class="row">
+            <button style="margin-bottom: 20px;" class="btn" id="toggleGoalOrderBtn">Show Goal Order</button>
+        </div>
+        <div class="row">
+            <div class="row" id="goalOrderContainer" style="display: none;"></div>
+        </div>
+        <div class="row">
+            <button id="solveButton">Solve</button>
+            <button style="background-color: red;" id="resetButton" style="margin-left: 25px; background-color: red">Reset</button>
+        </div>
+        <div id="tableauContainer"></div>
+    `;
 
     // ===== STATE =====
     let amtOfObjVars = 2;
@@ -248,11 +241,22 @@ export function render(formContainer, resultsContainer, Module) {
     let signItemsChoicesC = [];
     let toggle = false;
 
+    // YOUR REQUESTED BOOL — OFF BY DEFAULT
+    let penaltiesEnabled = false;
+
     const goalConstraintsContainer = document.getElementById('goalConstraintsContainer');
     const constraintsContainer = document.getElementById('constraintsContainer');
     const penaltiesContainer = document.getElementById('penaltiesContainer');
+    const penaltiesWrapper = document.getElementById('penaltiesWrapper');
+    const penaltiesToggle = document.getElementById('penaltiesToggle');
     const goalOrderContainer = document.getElementById('goalOrderContainer');
     const toggleGoalOrderBtn = document.getElementById('toggleGoalOrderBtn');
+
+    // TOGGLE LOGIC — ONLY THING ADDED
+    penaltiesToggle.onchange = () => {
+        penaltiesEnabled = penaltiesToggle.checked;
+        penaltiesWrapper.style.display = penaltiesEnabled ? 'block' : 'none';
+    };
 
     function updateGoalConstraints() {
         goalConstraintsContainer.innerHTML = '';
@@ -266,12 +270,10 @@ export function render(formContainer, resultsContainer, Module) {
                 input.value = goalConstraints[i][j];
                 input.oninput = (e) => goalConstraints[i][j] = parseFloat(e.target.value);
                 div.appendChild(input);
-
                 const label = document.createElement('label');
                 label.textContent = `x${j + 1}`;
                 div.appendChild(label);
             }
-
             const signSelect = document.createElement('select');
             signSelect.className = 'input-field';
             signItems.forEach((item, index) => {
@@ -288,7 +290,6 @@ export function render(formContainer, resultsContainer, Module) {
                     penalties.push(0.0);
                     updatePenalties();
                 }
-
                 let equalCount = 0;
                 let notEqualCount = 0;
                 for (let eqCtr = 0; eqCtr < goalConstraints.length; eqCtr++) {
@@ -299,22 +300,18 @@ export function render(formContainer, resultsContainer, Module) {
                         notEqualCount += 1;
                     }
                 }
-
                 if ((equalCount + notEqualCount) != penalties.length) {
                     penalties.pop();
                     updatePenalties();
                 }
-
             };
             div.appendChild(signSelect);
-
             const rhsInput = document.createElement('input');
             rhsInput.className = 'input-field';
             rhsInput.type = 'number';
             rhsInput.value = goalConstraints[i][amtOfObjVars];
             rhsInput.oninput = (e) => goalConstraints[i][amtOfObjVars] = parseFloat(e.target.value);
             div.appendChild(rhsInput);
-
             goalConstraintsContainer.appendChild(div);
         }
     }
@@ -331,12 +328,10 @@ export function render(formContainer, resultsContainer, Module) {
                 input.value = constraints[i][j];
                 input.oninput = (e) => constraints[i][j] = parseFloat(e.target.value);
                 div.appendChild(input);
-
                 const label = document.createElement('label');
                 label.textContent = `x${j + 1}`;
                 div.appendChild(label);
             }
-
             const signSelect = document.createElement('select');
             signSelect.className = 'input-field';
             signItems.forEach((item, index) => {
@@ -351,14 +346,12 @@ export function render(formContainer, resultsContainer, Module) {
                 constraints[i][amtOfObjVars + 1] = signItemsChoicesC[i];
             };
             div.appendChild(signSelect);
-
             const rhsInput = document.createElement('input');
             rhsInput.className = 'input-field';
             rhsInput.type = 'number';
             rhsInput.value = constraints[i][amtOfObjVars];
             rhsInput.oninput = (e) => constraints[i][amtOfObjVars] = parseFloat(e.target.value);
             div.appendChild(rhsInput);
-
             constraintsContainer.appendChild(div);
         }
     }
@@ -368,18 +361,15 @@ export function render(formContainer, resultsContainer, Module) {
         penalties.forEach((penalty, i) => {
             const div = document.createElement('div');
             div.className = 'penaltyItem';
-
             const label = document.createElement('label');
             label.textContent = `Penalty ${i + 1}`;
             div.appendChild(label);
-
             const input = document.createElement('input');
             input.className = 'input-field';
             input.type = 'number';
             input.value = penalty;
             input.oninput = (e) => penalties[i] = parseFloat(e.target.value);
             div.appendChild(input);
-
             penaltiesContainer.appendChild(div);
         });
     }
@@ -390,7 +380,6 @@ export function render(formContainer, resultsContainer, Module) {
             const div = document.createElement('div');
             div.style = "margin-bottom: 10px;";
             div.textContent = goals[i];
-
             const upBtn = document.createElement('button');
             upBtn.style = 'margin-left: 10px;';
             upBtn.className = 'btn';
@@ -403,7 +392,6 @@ export function render(formContainer, resultsContainer, Module) {
                 }
             };
             div.appendChild(upBtn);
-
             const downBtn = document.createElement('button');
             downBtn.className = 'btn';
             downBtn.textContent = 'Down';
@@ -415,7 +403,6 @@ export function render(formContainer, resultsContainer, Module) {
                 }
             };
             div.appendChild(downBtn);
-
             goalOrderContainer.appendChild(div);
         }
     }
@@ -499,9 +486,10 @@ export function render(formContainer, resultsContainer, Module) {
         constraints = [];
         signItemsChoicesC = [];
         toggle = false;
-
+        penaltiesEnabled = false;
+        penaltiesToggle.checked = false;
+        penaltiesWrapper.style.display = 'none';
         resultsContainer.innerHTML = "";
-
         updateGoalConstraints();
         updatePenalties();
         updateConstraints();
@@ -513,95 +501,176 @@ export function render(formContainer, resultsContainer, Module) {
     }
 
     document.getElementById("solveButton").onclick = () => {
-        try {
-            // Example input
-            // const goals = [
-            //     [40, 30, 20, 100, 0],
-            //     [2, 4, 3, 10, 2],
-            //     [5, 8, 4, 30, 1]
-            // ];
 
-            // // const constraints = [[1, 2, 3, 4, 2], [5, 6, 7, 8, 2]];
-            // const constraints = [];
-            // const penalties = [5, 8, 12, 15];
-            // const goalOrder = [2, 1, 0];
-            // const goalConstraints = goals;
+        // PASS EMPTY PENALTIES ARRAY WHEN TOGGLE IS OFF
+        // const penaltiesToUse = penaltiesEnabled ? penalties : [];
 
-            // Call the C++ solver
-            const result = Module.runGoalPenaltiesSimplex(goalConstraints, constraints, penalties, goalOrder);
+        if (penaltiesEnabled) {
+            try {
+                // Example input
+                // const goals = [
+                //     [40, 30, 20, 100, 0],
+                //     [2, 4, 3, 10, 2],
+                //     [5, 8, 4, 30, 1]
+                // ];
 
-            result.pivotCols.unshift(-1);
-            result.pivotRows.unshift(-1);
+                // // const constraints = [[1, 2, 3, 4, 2], [5, 6, 7, 8, 2]];
+                // const constraints = [];
+                // const penalties = [5, 8, 12, 15];
+                // const goalOrder = [2, 1, 0];
+                // const goalConstraints = goals;
 
-            result.headerRow.unshift(`t -`)
+                // Call the C++ solver
+                const result = Module.runGoalPenaltiesSimplex(goalConstraints, constraints, penalties, goalOrder);
 
-            // Render the tableau iterations
-            let html = `<h3>Goal Penalties Simplex Result</h3>`;
+                result.pivotCols.unshift(-1);
+                result.pivotRows.unshift(-1);
 
-            result.tableaus.forEach((tbl, iter) => {
-                if (iter === 0) {
-                    html += `<h4>Setup Tableau</h4>`;
-                } else if (iter === result.opTable) {
-                    // html += `<h4 style="color: blue;">Optimal Tableau ${iter}</h4>`;
-                    html += `<h4 style="color: YELLOW;">Optimal Tableau ${iter}</h4>`;
-                } else {
-                    html += `<h4>Tableau ${iter}</h4>`;
-                }
+                result.headerRow.unshift(`t -`)
 
-                if (iter !== 0) {
-                    html += `<h4>Penalties: ${fmt(result.penaltiesTotals[iter])}</h4>`;
-                }
+                // Render the tableau iterations
+                let html = `<h3>Goal Penalties Simplex Result</h3>`;
 
-                if (result.goalMetStrings[iter] != undefined)
-                {
-                    // Render goal status
-                    result.goalMetStrings[iter].forEach((metString, idx) => {
-                        if (metString !== " ") {
-                            html += `<h5>Goal ${idx + 1}: ${metString}</h5>`;
-                            html += `<br>`;
-                        }
-                    });
-                }
-
-
-                // Render tableau table
-                html += `<table border="1" cellpadding="4">`;
-
-                result.headerRow[0] = (`t - ${iter + 1}`)
-                result.headerRow.forEach(h => html += `<th>${h}</th>`);
-
-                tbl.forEach((row, rIdx) => {
-                    if (rIdx <= goalConstraints.length) {
-                        html += `<tr><td>z ${rIdx + 1}</td>`;
-                    }
-                    else
-                    {
-                        html += `<tr><td>c ${(rIdx - goalConstraints.length)}</td>`;
+                result.tableaus.forEach((tbl, iter) => {
+                    if (iter === 0) {
+                        html += `<h4>Setup Tableau</h4>`;
+                    } else if (iter === result.opTable) {
+                        // html += `<h4 style="color: blue;">Optimal Tableau ${iter}</h4>`;
+                        html += `<h4 style="color: YELLOW;">Optimal Tableau ${iter}</h4>`;
+                    } else {
+                        html += `<h4>Tableau ${iter}</h4>`;
                     }
 
-                    row.forEach((v, cIdx) => {
-                        let style = "";
-                        // Highlight pivot cells
-                        if ((result.pivotRows[iter] === rIdx || result.pivotCols[iter] === cIdx) && iter !== 0) {
-                            // style = 'style="background-color: lightgreen;"';
-                            style = 'style="background-color: #ff8800ff;"';
+                    if (iter !== 0) {
+                        html += `<h4>Penalties: ${fmt(result.penaltiesTotals[iter])}</h4>`;
+                    }
+
+                    if (result.goalMetStrings[iter] != undefined) {
+                        // Render goal status
+                        result.goalMetStrings[iter].forEach((metString, idx) => {
+                            if (metString !== " ") {
+                                html += `<h5>Goal ${idx + 1}: ${metString}</h5>`;
+                                html += `<br>`;
+                            }
+                        });
+                    }
+
+
+                    // Render tableau table
+                    html += `<table border="1" cellpadding="4">`;
+
+                    result.headerRow[0] = (`t - ${iter + 1}`)
+                    result.headerRow.forEach(h => html += `<th>${h}</th>`);
+
+                    tbl.forEach((row, rIdx) => {
+                        if (rIdx <= goalConstraints.length) {
+                            html += `<tr><td>z ${rIdx + 1}</td>`;
+                        }
+                        else {
+                            html += `<tr><td>c ${(rIdx - goalConstraints.length)}</td>`;
                         }
 
-                        html += `<td ${style}>${fmt(v)}</td>`;
+                        row.forEach((v, cIdx) => {
+                            let style = "";
+                            // Highlight pivot cells
+                            if ((result.pivotRows[iter] === rIdx || result.pivotCols[iter] === cIdx) && iter !== 0) {
+                                // style = 'style="background-color: lightgreen;"';
+                                style = 'style="background-color: #ff8800ff;"';
+                            }
+
+                            html += `<td ${style}>${fmt(v)}</td>`;
+                        });
+                        html += `</tr>`;
                     });
-                    html += `</tr>`;
+                    html += `</table>`;
+
                 });
-                html += `</table>`;
 
-            });
+                resultsContainer.innerHTML = html;
+            } catch (err) {
+                resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
+            }
 
-            resultsContainer.innerHTML = html;
-        } catch (err) {
-            resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
+        }
+        else {
+            try {
+                // Example input
+                // const goals = [
+                //     [40, 30, 20, 100, 0],
+                //     [2, 4, 3, 10, 2],
+                //     [5, 8, 4, 30, 1]
+                // ];
+
+                // const constraints = [[7, 2, 3, 69, 0],];
+                // const goalOrder = [2, 1, 0];
+                // const goalConstraints = goals;
+
+                // Call the C++ solver
+                const result = Module.runGoalPreemptiveSimplex(goalConstraints, constraints, goalOrder);
+
+                result.pivotCols.unshift(-1);
+                result.pivotRows.unshift(-1);
+
+                result.headerRow.unshift(`t -`)
+
+                // Render the tableau iterations
+                let html = `<h3>Goal Penalties Simplex Result</h3>`;
+
+                result.tableaus.forEach((tbl, iter) => {
+                    if (iter === 0) {
+                        html += `<h4>Setup Tableau</h4>`;
+                    } else if (iter === result.opTable) {
+                        // html += `<h4 style="color: blue;">Optimal Tableau ${iter}</h4>`;
+                        html += `<h4 style="color: yellow;">Optimal Tableau ${iter}</h4>`;
+                    } else {
+                        html += `<h4>Tableau ${iter}</h4>`;
+                    }
+
+                    if (result.goalMetStrings[iter] != undefined) {
+                        // Render goal status
+                        result.goalMetStrings[iter].forEach((metString, idx) => {
+                            if (metString !== " ") {
+                                html += `<h5>Goal ${idx + 1}: ${metString}</h5>`;
+                                html += `<br>`;
+                            }
+                        });
+                    }
+
+                    // Render tableau table
+                    html += `<table border="1" cellpadding="4">`;
+
+                    result.headerRow[0] = (`t - ${iter + 1}`)
+                    result.headerRow.forEach(h => html += `<th>${h}</th>`);
+
+                    tbl.forEach((row, rIdx) => {
+                        if (rIdx <= goalConstraints.length) {
+                            html += `<tr><td>z ${rIdx + 1}</td>`;
+                        }
+                        else {
+                            html += `<tr><td>c ${(rIdx - goalConstraints.length)}</td>`;
+                        }
+
+                        row.forEach((v, cIdx) => {
+                            let style = "";
+                            // Highlight pivot cells
+                            if ((result.pivotRows[iter] === rIdx || result.pivotCols[iter] === cIdx) && iter !== 0) {
+                                // style = 'style="background-color: lightgreen;"';
+                                style = 'style="background-color: #ff8800ff;"';
+                            }
+
+                            html += `<td ${style}>${fmt(v)}</td>`;
+                        });
+                        html += `</tr>`;
+                    });
+                    html += `</table>`;
+                });
+
+                resultsContainer.innerHTML = html;
+            } catch (err) {
+                resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
+            }
         }
     };
-
-
 
     // ===== INITIAL RENDER =====
     updateGoalConstraints();
