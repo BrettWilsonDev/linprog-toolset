@@ -471,6 +471,7 @@ export function render(formContainer, resultsContainer, Module) {
         toggle = !toggle;
         goalOrderContainer.style.display = toggle ? 'block' : 'none';
         toggleGoalOrderBtn.textContent = toggle ? 'Hide Goal Order' : 'Show Goal Order';
+        updateGoalOrder();
     };
 
     document.getElementById("resetButton").onclick = () => {
@@ -493,6 +494,7 @@ export function render(formContainer, resultsContainer, Module) {
         updateGoalConstraints();
         updatePenalties();
         updateConstraints();
+        updateGoalOrder();
     };
 
     function fmt(num, decimals = 6) {
