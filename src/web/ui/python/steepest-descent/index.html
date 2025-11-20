@@ -729,7 +729,7 @@
                 # print(variables)
                 # print(points)
 
-                optimizer = DetailedSteepestDescentOptimizer(func, variables, isMin)
+                optimizer = DetailedSteepestDescentOptimizer(func, variables, not isMin)
                 result = optimizer.optimize(points, verbose=False)
 
                 # print(result)
