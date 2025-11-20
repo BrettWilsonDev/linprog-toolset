@@ -35,38 +35,35 @@ public:
     double DoGoldenRatioSearch(const std::string &func, double xLower, double xUpper, double tol, bool findMin = false, int maxIter = 100)
     {
         oss << "\nFunction: " << func << "\n";
-
         // ExprTk setup
         exprtk::symbol_table<double> symbolTable;
         double x = xLower;
         symbolTable.add_variable("x", x);
-
         exprtk::expression<double> expression;
         expression.register_symbol_table(symbolTable);
-
         exprtk::parser<double> parser;
         if (!parser.compile(func, expression))
         {
             throw std::runtime_error("Error compiling expression: " + func);
         }
-
-        const double phi = (1 + std::sqrt(5)) / 2;
+        const double phi = (1 + std::sqrt(5)) / 2; // Golden ratio
         double a = xLower, b = xUpper;
         double c = b - (b - a) / phi;
         double d = a + (b - a) / phi;
-
         symbolTable.get_variable("x")->ref() = c;
         double fc = expression.value();
         symbolTable.get_variable("x")->ref() = d;
         double fd = expression.value();
-
         oss << std::fixed << std::setprecision(6);
-        oss << "Iteration | xLower        | xUpper        | x1        | x2        | f(x1)     | f(x2)     | e\n";
+
+        oss << "Iteration | xLower        | xUpper        | d            | x1            | x2            | f(x1)         | f(x2)         | e\n";
 
         int iter = 1;
         double e = std::abs(b - a);
-        oss << iter << "         | " << a << " | " << b << " | " << d << " | " << c
-            << " | " << fc << " | " << fd << " | " << e << "\n";
+        double dist = (b - a) / phi;
+
+        oss << iter << "         | " << a << " | " << b << " | " << dist
+            << " | " << d << " | " << c << " | " << fd << " | " << fc << " | " << e << "\n";
         iter++;
 
         while (e > tol)
@@ -75,7 +72,6 @@ public:
             {
                 break;
             }
-
             if ((findMin && fc > fd) || (!findMin && fc < fd))
             {
                 a = c;
@@ -94,29 +90,24 @@ public:
                 symbolTable.get_variable("x")->ref() = c;
                 fc = expression.value();
             }
-
             e = std::abs(b - a);
-            oss << iter << "         | " << a << " | " << b << " | " << d << " | " << c
-                << " | " << fc << " | " << fd << " | " << e << "\n";
+            dist = (b - a) / phi; 
+
+            oss << iter << "         | " << a << " | " << b << " | " << dist
+                << " | " << d << " | " << c << " | " << fd << " | " << fc << " | " << e << "\n";
             iter++;
         }
-
         double xOpt = (b + a) / 2;
         symbolTable.get_variable("x")->ref() = xOpt;
         double fOpt = expression.value();
-
         oss << "\nOptimal x: " << xOpt << "\n";
-        // oss << (findMin ? "Min" : "Max") << " f(x): " << fOpt << "\n";
         oss << (findMin ? "Min" : "Max") << " z: " << fOpt << " Radians\n";
 
-        // Store the output in the class member
         output = oss.str();
-
         if (isConsoleOutput)
         {
             std::cout << output << std::endl;
         }
-
         return xOpt;
     }
 
