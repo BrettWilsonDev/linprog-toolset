@@ -239,6 +239,8 @@ export function render(formContainer, resultsContainer, Module) {
                 </div>
             </div>
         </div>
+
+        <label style="font-size: 13px;" class="row">More Accurate Python Sympy Version (Recommended But Slower)</label>
         <div class="row">
             <button onclick="window.location.href = './src/web/ui/python/steepest-descent/';">Sympy Version</button>
         </div>
@@ -362,7 +364,7 @@ export function render(formContainer, resultsContainer, Module) {
             const isMin = (problemType === "Min");
 
 
-            const result = Module.runSteepestDescent(func, variables, points, isMin);
+            const result = Module.runSteepestDescent(func, variables, points, !isMin);
 
             resultsContainer.innerHTML = "";
             resultsContainer.innerHTML = '<pre>' + result.outputString + '</pre>';

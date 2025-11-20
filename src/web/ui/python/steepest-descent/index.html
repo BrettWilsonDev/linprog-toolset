@@ -535,6 +535,7 @@
                     </div>
                 </div>
             </div>
+            <h3 id="loadingStatus">Loading... Please Wait</h3>
             <div hidden id="hiddenUntilLoad">
                 <div class="row">
                     <button id="solveButton">Solve</button>
@@ -711,6 +712,7 @@
             import math
 
             document.getElementById("hiddenUntilLoad").removeAttribute("hidden");
+            document.getElementById("loadingStatus").hidden = True;
 
             from descent_algorithm import DetailedSteepestDescentOptimizer
 
