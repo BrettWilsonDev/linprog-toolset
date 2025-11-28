@@ -393,78 +393,86 @@ export function render(formContainer, resultsContainer, Module) {
         return parseFloat(num.toFixed(decimals));
     }
 
-    // Add these helper functions inside the render function, before solveButton.onclick
-    // Add these helper functions inside the render function, before solveButton.onclick
-    // Add these helper functions inside the render function, before solveButton.onclick
-    // Add these helper functions inside the render function, before solveButton.onclick
-    // Add these helper functions inside the render function, before solveButton.onclick
     function parseAndRenderTableaus(solutionText, container) {
         const lines = solutionText.trim().split('\n');
-        let currentSection = '';
-        let currentTableau = [];
         let headers = [];
+        let currentTableau = [];
+        let currentSection = '';
         let isTableau = false;
-        let pendingPivotRow = null;
-        let pendingPivotCol = null;
-        let currentPivotRow = null;
-        let currentPivotCol = null;
+        let pivotRow = null;
+        let pivotCol = null;
 
-        lines.forEach((line, index) => {
-            line = line.trim();
-            if (!line) return; // Skip empty lines
+        const commitTableau = () => {
+            if (currentTableau.length > 0 && headers.length > 0) {
+                renderTableau(currentSection, headers, currentTableau, container, pivotRow, pivotCol);
+            }
+            currentTableau = [];
+            headers = [];
+            currentSection = '';
+            isTableau = false;
+        };
 
-            if (line.startsWith("Pivot row:")) {
-                pendingPivotRow = parseInt(line.split(":")[1].trim());
+        lines.forEach((rawLine, idx) => {
+            const line = rawLine.trim();
+            if (!line) return;
+
+            // Pivot info
+            if (line.startsWith('Pivot row:')) {
+                pivotRow = parseInt(line.split(':')[1]);
                 return;
             }
-            if (line.startsWith("Pivot col:")) {
-                pendingPivotCol = parseInt(line.split(":")[1].trim());
+            if (line.startsWith('Pivot col:')) {
+                pivotCol = parseInt(line.split(':')[1]);
                 return;
             }
 
-            // Detect tableau start (e.g., "Initial Tableau 1", "Tableau with cutting plane constraint")
-            if (line.match(/^(Initial Tableau|Tableau with cutting plane constraint|Iteration \d+ - Tableau|Final Optimal Tableau)/)) {
-                if (currentTableau.length > 0 && headers.length > 0) {
-                    renderTableau(currentSection, headers, currentTableau, container, currentPivotRow, currentPivotCol);
-                    currentTableau = [];
-                    headers = [];
-                }
+            // New tableau starts
+            if (line.match(/Initial Tableau|Final Optimal Tableau|Tableau with cutting plane|Iteration \d+ - Tableau/)) {
+                commitTableau();
                 currentSection = line;
-                currentPivotRow = pendingPivotRow;
-                currentPivotCol = pendingPivotCol;
-                pendingPivotRow = null;
-                pendingPivotCol = null;
                 isTableau = true;
                 return;
             }
 
-            // Detect headers (e.g., "x1        x2      s/e1      s/e2       rhs")
-            if (isTableau && line.match(/^(x\d+|s\/e\d+|rhs)\b/)) {
-                headers = line.trim().split(/\s{2,}/).filter(h => h.match(/^(x\d+|s\/e\d+|rhs)$/));
+            // Header line contains variable names
+            if (isTableau && !headers.length && /(^|\s)(x\d+|s\/e\d+|rhs)\b/.test(line)) {
+                headers = line
+                    .split(/\s+/)
+                    .filter(h => /^(x\d+|s\/e\d+|rhs)$/.test(h));
                 return;
             }
 
-            // Detect tableau data rows (lines with space-separated numbers)
-            if (isTableau && line.match(/^-?\d+\.\d+/)) {
-                const row = line.trim().split(/\s{2,}/).map(num => {
-                    const parsed = parseFloat(num);
-                    return isNaN(parsed) ? num : parsed.toFixed(4);
+            // Data row – must contain only numbers, dots, minus, spaces (and possibly scientific notation)
+            if (isTableau && /^[\s\d\.\-eE+-]+$/.test(rawLine)) {
+                // Split on any amount of whitespace, but keep the minus sign with its number
+                const tokens = rawLine
+                    .replace(/-/g, ' -')           // separate minus signs
+                    .replace(/^\s+-/, '-')         // fix leading negative
+                    .split(/\s+/)
+                    .filter(t => t !== '');
+
+                const row = tokens.map(t => {
+                    const n = parseFloat(t);
+                    return isNaN(n) ? t : Number(n.toFixed(4));
                 });
+
                 if (row.length === headers.length) {
                     currentTableau.push(row);
                 } else {
-                    console.warn(`Row ${index + 1} skipped: length ${row.length} does not match headers ${headers.length}`, { row, headers });
+                    console.warn(`Row ${idx + 1} length mismatch → expected ${headers.length}, got ${row.length}`, {
+                        line: rawLine,
+                        parsed: row
+                    });
                 }
                 return;
             }
 
-            // Non-tableau text (e.g., analysis, solution details)
-            if (currentTableau.length > 0 && headers.length > 0) {
-                renderTableau(currentSection, headers, currentTableau, container, currentPivotRow, currentPivotCol);
-                currentTableau = [];
-                headers = [];
-                isTableau = false;
+            // Anything else = end of current tableau + free text
+            if (isTableau) {
+                commitTableau();
             }
+
+            // Plain text (solution, bounds, etc.)
             if (line) {
                 const pre = document.createElement('pre');
                 pre.textContent = line;
@@ -472,10 +480,8 @@ export function render(formContainer, resultsContainer, Module) {
             }
         });
 
-        // Render the last tableau, if any
-        if (currentTableau.length > 0 && headers.length > 0) {
-            renderTableau(currentSection, headers, currentTableau, container, currentPivotRow, currentPivotCol);
-        }
+        // Don't forget the very last tableau
+        commitTableau();
     }
 
     function renderTableau(section, headers, data, container, pivotRow = null, pivotCol = null) {
@@ -543,19 +549,19 @@ export function render(formContainer, resultsContainer, Module) {
             //     [5, 2, 20, 0],
             // ];
 
+            // objFunc = [520, 460];
+
+            // constraints = [
+            //     [7, 5, 32, 0],
+            //     [8, 6, 68, 0],
+            // ];
+
             let isMin = (problemType === "Min");
 
             let result = Module.runCuttingPlane(objFunc, constraints, isMin);
 
-
             resultsContainer.innerHTML = "";
             parseAndRenderTableaus(result.solution, resultsContainer);
-
-            // resultsContainer.innerHTML = "";
-            // const preElement = document.createElement("pre");
-            // preElement.textContent = result.solution;
-            // resultsContainer.appendChild(preElement);
-
         } catch (err) {
             resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
         }
