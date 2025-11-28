@@ -330,8 +330,7 @@
       Constraints</button>
     <button onclick="loadUI('branch_and_bound')">Branch And Bound Simplex</button>
     <button onclick="loadUI('knapsack')">Branch And Bound Knapsack</button>
-    <button onclick="loadUI('cheapest_insertion_tsp')">Cheapest Insertion TSP</button>
-    <button onclick="loadUI('nearest_neighbor_tsp')">Nearest Neighbor TSP</button>
+    <button onclick="loadUI('traveling_sales_person')">Traveling Sales Person CIN / NNH</button>
     <button onclick="loadUI('cutting_plane')">Cutting Plane</button>
     <button onclick="loadUI('dea')">Data Envelopment Analysis</button>
     <button onclick="loadUI('steepest_descent')">Steepest Ascent / Descent</button>
@@ -414,13 +413,9 @@
             </p>
           </li>
           <li>
-            <h3><a href="#" onclick="loadUI('cheapest_insertion_tsp')">Cheapest Insertion TSP Solver</a></h3>
-            <p>Solves the <strong>Traveling Salesman Problem</strong> with the <strong>Cheapest Insertion</strong>
+            <h3><a href="#" onclick="loadUI('traveling_sales_person')">Traveling Sales Person Solver</a></h3>
+            <p>Solves the <strong>Traveling Salesman Problem</strong> with the <strong>Cheapest Insertion and Nearest Neighbor</strong>
               heuristic.</p>
-          </li>
-          <li>
-            <h3><a href="#" onclick="loadUI('nearest_neighbor_tsp')">Nearest Neighbor TSP Solver</a></h3>
-            <p>Approximates <strong>TSP solutions</strong> using the <strong>Nearest Neighbor</strong> algorithm.</p>
           </li>
           <li>
             <h3><a href="#" onclick="loadUI('hungarian_algorithm')">Hungarian Algorithm Solver</a></h3>
@@ -458,8 +453,7 @@
     import * as knapsack from "./src/web/ui/knapsack.js";
     import * as branch_and_bound from "./src/web/ui/branch_and_bound.js";
     import * as cutting_plane from "./src/web/ui/cutting_plane.js";
-    import * as cheapest_insertion_tsp from "./src/web/ui/cheapest_insertion_tsp.js";
-    import * as nearest_neighbor_tsp from "./src/web/ui/nearest_neighbor_tsp.js";
+    import * as traveling_sales_person from "./src/web/ui/traveling_sales_person.js";
     import * as hungarian_algorithm from "./src/web/ui/hungarian_algorithm.js";
     import * as machine_scheduling from "./src/web/ui/machine_scheduling.js";
     import * as goldenratio_search from "./src/web/ui/goldenratio_search.js";
@@ -492,8 +486,7 @@
       knapsack,
       branch_and_bound,
       cutting_plane,
-      cheapest_insertion_tsp,
-      nearest_neighbor_tsp,
+      traveling_sales_person,
       hungarian_algorithm,
       machine_scheduling,
       goldenratio_search,

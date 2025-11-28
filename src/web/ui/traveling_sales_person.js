@@ -146,7 +146,13 @@ export function render(formContainer, resultsContainer, Module) {
         }
     </style>
 
-    <h1 style="margin-top: 60px;" class="row">Cheapest Insertion Traveling Sales Person</h1>
+    <h1 style="margin-top: 60px;" class="row">Traveling Sales Person CIN / NNH</h1>
+    <div class="row">
+    <label for="cin">Cheapest Insertion</label>
+    <input type="checkbox" id="cin" checked>
+    <label for="nnh">Nearest Neighbor</label>
+    <input type="checkbox" id="nnh">
+    </div>
     <div class="row">
       <span>Number of Cities: <span id="numCitiesDisplay">3</span></span>
       <button id="addCity">Cities +</button>
@@ -174,6 +180,7 @@ export function render(formContainer, resultsContainer, Module) {
         [0.0, 0.0, 0.0],
         [0.0, 0.0, 0.0]
     ];
+    let isCheapestInsertion = true;
 
     function updateStartCitySelector() {
         const select = document.getElementById("startCity");
@@ -286,16 +293,41 @@ export function render(formContainer, resultsContainer, Module) {
         updateDistanceMatrix();
     };
 
+    const cinCheckbox = document.getElementById("cin");
+    const nnhCheckbox = document.getElementById("nnh");
+
+    cinCheckbox.addEventListener("change", () => {
+        nnhCheckbox.checked = !cinCheckbox.checked;
+    });
+
+    nnhCheckbox.addEventListener("change", () => {
+        cinCheckbox.checked = !nnhCheckbox.checked;
+    });
+
     document.getElementById("solveButton").onclick = () => {
-        try {
-            const result = Module.runCheapestInsertion(distanceMatrix, startCity + 1);
-            resultsContainer.innerHTML = "";
-            const pre = document.createElement("pre");
-            pre.textContent = result.solution;
-            resultsContainer.appendChild(pre);
-        } catch (err) {
-            resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
+        if (cinCheckbox.checked) {
+            try {
+                const result = Module.runCheapestInsertion(distanceMatrix, startCity + 1);
+                resultsContainer.innerHTML = "";
+                const pre = document.createElement("pre");
+                pre.textContent = result.solution;
+                resultsContainer.appendChild(pre);
+            } catch (err) {
+                resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
+            }
         }
+        else {
+            try {
+                const result = Module.runNearestNeighbor(distanceMatrix, startCity + 1);
+                resultsContainer.innerHTML = "";
+                const pre = document.createElement("pre");
+                pre.textContent = result.solution;
+                resultsContainer.appendChild(pre);
+            } catch (err) {
+                resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
+            }
+        }
+
     };
 
     // Initial render
