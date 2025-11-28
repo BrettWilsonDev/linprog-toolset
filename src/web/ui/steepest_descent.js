@@ -215,16 +215,16 @@ export function render(formContainer, resultsContainer, Module) {
             }
         </style>
 
-        <h1 style="margin-top: 60px;">Steepest Descent</h1>
+        <h1 style="margin-top: 60px;">Steepest Ascent / Descent</h1>
         <div class="row">
             <label>
-                <input type="radio" name="problemType" value="Max" checked> Max
+                <input type="radio" name="problemType" value="Max" checked> Ascent
             </label>
             <label>
-                <input type="radio" name="problemType" value="Min"> Min
+                <input type="radio" name="problemType" value="Min"> Descent
             </label>
         </div>
-        <div class="row" id="problemTypeText">Problem is: Max</div>
+        <div class="row" id="problemTypeText">Problem is: Ascent</div>
         <div id="InputSection">
             <div>
                 <label class="row">Function</label>
@@ -257,7 +257,13 @@ export function render(formContainer, resultsContainer, Module) {
 
     function updateProblemType() {
         problemType = document.querySelector('input[name="problemType"]:checked').value;
-        document.getElementById("problemTypeText").innerText = "Problem is: " + problemType;
+        if (problemType === "Min") {
+            document.getElementById("problemTypeText").innerText = "Problem is: " + "Descent";
+        }
+        else
+        {
+            document.getElementById("problemTypeText").innerText = "Problem is: " + "Ascent";
+        }
     }
 
     // Update points inputs based on number of variables
@@ -317,7 +323,7 @@ export function render(formContainer, resultsContainer, Module) {
 
     function resetRadios() {
         document.querySelector('input[value="Max"]').checked = true;
-        document.getElementById("problemTypeText").innerText = "Problem is: Max";
+        document.getElementById("problemTypeText").innerText = "Problem is: Ascent";
     }
 
     document.getElementById("resetButton").onclick = () => {
