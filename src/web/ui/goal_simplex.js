@@ -234,6 +234,7 @@ export function render(formContainer, resultsContainer, Module) {
     let goalConstraints = [[0.0, 0.0, 0.0, 0.0]];
     let signItemsChoices = [0];
     let signItems = ["<=", ">=", "="];
+    let signItemsC = ["<=", ">="];
     let goals = ["Goal 1"];
     let goalOrder = [0];
     let penalties = [0.0];
@@ -334,7 +335,7 @@ export function render(formContainer, resultsContainer, Module) {
             }
             const signSelect = document.createElement('select');
             signSelect.className = 'input-field';
-            signItems.forEach((item, index) => {
+            signItemsC.forEach((item, index) => {
                 const option = document.createElement('option');
                 option.value = index;
                 option.textContent = item;
@@ -504,8 +505,32 @@ export function render(formContainer, resultsContainer, Module) {
 
     document.getElementById("solveButton").onclick = () => {
 
-        // PASS EMPTY PENALTIES ARRAY WHEN TOGGLE IS OFF
-        // const penaltiesToUse = penaltiesEnabled ? penalties : [];
+        let rowHeaders = [];
+        for (let i = 0; i < goalConstraints.length; i++) {
+            if (goalConstraints[i][goalConstraints[i].length - 1] != 2) {
+                rowHeaders.push(`z`);
+            }
+            else {
+                rowHeaders.push(`z'`);
+                rowHeaders.push(`z''`);
+            }
+        }
+
+        for (let i = 0; i < goalConstraints.length + constraints.length; i++) {
+            rowHeaders.push(`c ${i + 1}`);
+        }
+
+        for (let i = 0; i < rowHeaders.length; i++) {
+            if (rowHeaders[i] === "z''") {
+                rowHeaders[i] = `z'' ${i + 1}`;
+            }
+            else if (rowHeaders[i] === "z'") {
+                rowHeaders[i] = `z' ${i + 1}`;
+            }
+            else if (rowHeaders[i] === "z") {
+                rowHeaders[i] = `z ${i + 1}`;
+            }
+        }
 
         if (penaltiesEnabled) {
             try {
@@ -522,6 +547,8 @@ export function render(formContainer, resultsContainer, Module) {
                 // const goalOrder = [2, 1, 0];
                 // const goalConstraints = goals;
 
+
+
                 // Call the C++ solver
                 const result = Module.runGoalPenaltiesSimplex(goalConstraints, constraints, penalties, goalOrder);
 
@@ -531,7 +558,7 @@ export function render(formContainer, resultsContainer, Module) {
                 result.headerRow.unshift(`t -`)
 
                 // Render the tableau iterations
-                let html = `<h3>Goal Penalties Simplex Result</h3>`;
+                let html = `<h3>Goal Simplex Result</h3>`;
 
                 result.tableaus.forEach((tbl, iter) => {
                     if (iter === 0) {
@@ -557,7 +584,6 @@ export function render(formContainer, resultsContainer, Module) {
                         });
                     }
 
-
                     // Render tableau table
                     html += `<table border="1" cellpadding="4">`;
 
@@ -565,12 +591,7 @@ export function render(formContainer, resultsContainer, Module) {
                     result.headerRow.forEach(h => html += `<th>${h}</th>`);
 
                     tbl.forEach((row, rIdx) => {
-                        if (rIdx <= goalConstraints.length) {
-                            html += `<tr><td>z ${rIdx + 1}</td>`;
-                        }
-                        else {
-                            html += `<tr><td>c ${(rIdx - goalConstraints.length)}</td>`;
-                        }
+                        html += `<tr><td>${rowHeaders[rIdx]}</td>`;
 
                         row.forEach((v, cIdx) => {
                             let style = "";
@@ -645,12 +666,8 @@ export function render(formContainer, resultsContainer, Module) {
                     result.headerRow.forEach(h => html += `<th>${h}</th>`);
 
                     tbl.forEach((row, rIdx) => {
-                        if (rIdx <= goalConstraints.length) {
-                            html += `<tr><td>z ${rIdx + 1}</td>`;
-                        }
-                        else {
-                            html += `<tr><td>c ${(rIdx - goalConstraints.length)}</td>`;
-                        }
+                        html += `<tr><td>${rowHeaders[rIdx]}</td>`;
+
 
                         row.forEach((v, cIdx) => {
                             let style = "";
