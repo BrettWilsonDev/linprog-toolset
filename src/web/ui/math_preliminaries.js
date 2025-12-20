@@ -704,13 +704,13 @@ export function render(formContainer, resultsContainer, Module) {
                 ${renderVector(result.cbvBInv)}
 
                 <h4>Initial Table</h4>
-                ${renderTables(result.initialTable, ['x1', 'x2', 's1', 's2', 's3', 'rhs'])}
+                ${renderTables(result.initialTable, result.headerRow)}
 
                 <h4>Optimal Table</h4>
-                ${renderTables(result.optimalTable, ['x1', 'x2', 's1', 's2', 's3', 'rhs'])}
+                ${renderTables(result.optimalTable, result.headerRow)}
 
                 <h4>Changing Table</h4>
-                ${renderTables(result.changingTable, ['x1', 'x2', 's1', 's2', 's3', 'rhs'])}
+                ${renderTables(result.changingTable, result.headerRow)}
             `;
 
             if (result.shouldReOptimize) {
