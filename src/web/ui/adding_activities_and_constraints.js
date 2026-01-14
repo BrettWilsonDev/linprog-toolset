@@ -540,6 +540,9 @@ export function render(formContainer, resultsContainer, Module) {
         // ];
         // let newAct = [40, -1, -1, -1];
         // let newCons = [[0, 0, 1, 5, 0]];
+        // console.log(newConstraint);
+        // newConstraint = newCons;
+        let newCons = addingConstraints;    
         let isMin = (problemType === "Min");
         let result = "something";
         if (choiceProblemType == "activities") {
