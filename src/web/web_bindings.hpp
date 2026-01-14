@@ -385,7 +385,8 @@ emscripten::val runMathPreliminaries(emscripten::val objFunc, emscripten::val js
     jsResult.set("shouldReOptimize", mathPreliminaries.getShouldReOptimize());
     jsResult.set("pivotCols", vecToJS(mathPreliminaries.getPivotCols()));
     jsResult.set("pivotRows", vecToJS(mathPreliminaries.getPivotRows()));
-    jsResult.set("reOptTableaus", vecVecVecToJS(mathPreliminaries.getReOptTableaus()));
+    jsResult.set("reOptTableaus", vecVecVecToJS(mathPreliminaries.getReOptTableaus())); 
+    jsResult.set("influencedFormulas", vecToJS(mathPreliminaries.getInfluencedFormulas()));
 
     return jsResult;
 }

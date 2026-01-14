@@ -76,6 +76,8 @@ private:
     std::vector<int> pivotRows;
 
     bool shouldReoptimize;
+    
+    std::vector<std::string> influencedFormulasOutput;
 
 public:
     MathPreliminaries(bool isConsoleOutput = false) : isConsoleOutput(isConsoleOutput), d("d")
@@ -205,6 +207,414 @@ public:
         }
 
         return cleaned;
+    }
+
+    // bool isAllDeltaCRow;
+    // bool isSingleDeltaCRow;
+    // bool isSingleDeltaARow;
+    // int singleCIndex;
+    // int singleAIndex;
+    // bool isDeltaZCol;
+    // bool isAllDeltaRows;
+    // bool isFormulaDeltaChanged;
+    // std::vector<std::string> influencedFormulasOutput;
+
+    void detectAndPrintInfluencedFormulas(
+        const std::vector<std::vector<Symbolic>> &changingTable,
+        const Symbolic &matrixB,
+        const Symbolic &matrixCbvNegOne,
+        size_t objFuncSize)
+    {
+        // Clear previous output
+        influencedFormulasOutput.clear();
+
+        // Reset flags
+        isAllDeltaCRow = false;
+        isSingleDeltaCRow = false;
+        isSingleDeltaARow = false;
+        isDeltaZCol = false;
+        isAllDeltaRows = false;
+        isFormulaDeltaChanged = false;
+        singleCIndex = -1;
+        singleAIndex = -1;
+
+        // Check if any element in changingTable contains delta
+        for (size_t i = 0; i < changingTable.size(); i++)
+        {
+            for (size_t j = 0; j < changingTable[i].size(); j++)
+            {
+                try
+                {
+                    const Symbolic &expr = changingTable[i][j];
+                    std::string tmpName = "**sym_tmp*" + std::to_string(i) + "*" + std::to_string(j);
+                    Symbolic tmp(tmpName.c_str());
+
+                    std::ostringstream oss;
+                    oss << expr;
+                    std::string before = oss.str();
+                    oss.str("");
+                    oss.clear();
+                    oss << expr[d == tmp];
+                    std::string after = oss.str();
+
+                    bool contains_d = (before != after);
+
+                    if (!contains_d)
+                    {
+                        try
+                        {
+                            double v0 = double(expr[d == 0]);
+                            double v1 = double(expr[d == 1]);
+                            if (v0 != v1)
+                                contains_d = true;
+                        }
+                        catch (...)
+                        {
+                            contains_d = true;
+                        }
+                    }
+
+                    if (contains_d)
+                    {
+                        isFormulaDeltaChanged = true;
+                        break;
+                    }
+                }
+                catch (...)
+                {
+                }
+            }
+            if (isFormulaDeltaChanged)
+                break;
+        }
+
+        if (!isFormulaDeltaChanged)
+            return;
+
+        influencedFormulasOutput.push_back("Mathematical Preliminary formulas that will be influenced");
+
+        if (isConsoleOutput)
+        {
+            std::cout << "\nMathematical Preliminary formulas that will be influenced" << std::endl;
+        }
+
+        // Check if all rows in matrixB contain delta
+        int rows = matrixB.rows();
+        int cols = matrixB.columns();
+        for (int i = 0; i < rows && !isAllDeltaRows; i++)
+        {
+            for (int j = 0; j < cols; j++)
+            {
+                try
+                {
+                    const Symbolic &expr = matrixB(i, j);
+                    std::string tmpName = "**sym_tmp_b*" + std::to_string(i) + "*" + std::to_string(j);
+                    Symbolic tmp(tmpName.c_str());
+
+                    std::ostringstream oss;
+                    oss << expr;
+                    std::string before = oss.str();
+                    oss.str("");
+                    oss.clear();
+                    oss << expr[d == tmp];
+                    std::string after = oss.str();
+
+                    if (before != after)
+                    {
+                        isAllDeltaRows = true;
+                        break;
+                    }
+
+                    try
+                    {
+                        double v0 = double(expr[d == 0]);
+                        double v1 = double(expr[d == 1]);
+                        if (v0 != v1)
+                        {
+                            isAllDeltaRows = true;
+                            break;
+                        }
+                    }
+                    catch (...)
+                    {
+                    }
+                }
+                catch (...)
+                {
+                }
+            }
+        }
+
+        if (isAllDeltaRows)
+        {
+            influencedFormulasOutput.push_back("All formulas are influenced");
+
+            if (isConsoleOutput)
+            {
+                std::cout << "All formulas are influenced" << std::endl;
+            }
+            return;
+        }
+
+        // Check if CbvNegOne contains delta (all C row)
+        int cbvRows = matrixCbvNegOne.rows();
+        for (int i = 0; i < cbvRows; i++)
+        {
+            try
+            {
+                const Symbolic &expr = matrixCbvNegOne(i, 0);
+                std::string tmpName = "**sym_tmp_cbv*" + std::to_string(i);
+                Symbolic tmp(tmpName.c_str());
+
+                std::ostringstream oss;
+                oss << expr;
+                std::string before = oss.str();
+                oss.str("");
+                oss.clear();
+                oss << expr[d == tmp];
+                std::string after = oss.str();
+
+                if (before != after)
+                {
+                    isAllDeltaCRow = true;
+                    break;
+                }
+
+                try
+                {
+                    double v0 = double(expr[d == 0]);
+                    double v1 = double(expr[d == 1]);
+                    if (v0 != v1)
+                    {
+                        isAllDeltaCRow = true;
+                        break;
+                    }
+                }
+                catch (...)
+                {
+                }
+            }
+            catch (...)
+            {
+            }
+        }
+
+        if (isAllDeltaCRow)
+        {
+            influencedFormulasOutput.push_back("CBVB^-1");
+            influencedFormulasOutput.push_back("Z* = CBVB^-1.b");
+
+            if (isConsoleOutput)
+            {
+                std::cout << "CBVB^-1" << std::endl;
+                std::cout << "Z* = CBVB^-1.b" << std::endl;
+            }
+
+            for (size_t i = 0; i < changingTable[0].size() - 1; i++)
+            {
+                std::string formula;
+                if (i < objFuncSize)
+                {
+                    formula = "C" + std::to_string(i + 1) + "* = (CBVB^-1.A" +
+                              std::to_string(i + 1) + ") - C" + std::to_string(i + 1);
+                }
+                else
+                {
+                    formula = "S" + std::to_string(i - objFuncSize + 1) +
+                              "* = (CBVB^-1.A" + std::to_string(i + 1) + ") - C" +
+                              std::to_string(i + 1);
+                }
+                influencedFormulasOutput.push_back(formula);
+
+                if (isConsoleOutput)
+                {
+                    std::cout << formula << std::endl;
+                }
+            }
+        }
+
+        // Check for single delta C row
+        if (!isAllDeltaCRow)
+        {
+            for (size_t i = 1; i < changingTable.size(); i++)
+            {
+                for (size_t j = 0; j < changingTable[i].size() - 1; j++)
+                {
+                    try
+                    {
+                        const Symbolic &expr = changingTable[0][j];
+                        std::string tmpName = "**sym_tmp_c*" + std::to_string(j);
+                        Symbolic tmp(tmpName.c_str());
+
+                        std::ostringstream oss;
+                        oss << expr;
+                        std::string before = oss.str();
+                        oss.str("");
+                        oss.clear();
+                        oss << expr[d == tmp];
+                        std::string after = oss.str();
+
+                        if (before != after)
+                        {
+                            isSingleDeltaCRow = true;
+                            singleCIndex = j + 1;
+                            break;
+                        }
+
+                        try
+                        {
+                            double v0 = double(expr[d == 0]);
+                            double v1 = double(expr[d == 1]);
+                            if (v0 != v1)
+                            {
+                                isSingleDeltaCRow = true;
+                                singleCIndex = j + 1;
+                                break;
+                            }
+                        }
+                        catch (...)
+                        {
+                        }
+                    }
+                    catch (...)
+                    {
+                    }
+                }
+                if (isSingleDeltaCRow)
+                    break;
+            }
+        }
+
+        // Check for single delta A row
+        if (!isAllDeltaCRow)
+        {
+            for (size_t i = 1; i < changingTable.size(); i++)
+            {
+                for (size_t j = 0; j < changingTable[i].size() - 1; j++)
+                {
+                    try
+                    {
+                        const Symbolic &expr = changingTable[i][j];
+                        std::string tmpName = "**sym_tmp_a*" + std::to_string(i) + "*" + std::to_string(j);
+                        Symbolic tmp(tmpName.c_str());
+
+                        std::ostringstream oss;
+                        oss << expr;
+                        std::string before = oss.str();
+                        oss.str("");
+                        oss.clear();
+                        oss << expr[d == tmp];
+                        std::string after = oss.str();
+
+                        if (before != after)
+                        {
+                            isSingleDeltaARow = true;
+                            singleAIndex = j + 1;
+                            break;
+                        }
+
+                        try
+                        {
+                            double v0 = double(expr[d == 0]);
+                            double v1 = double(expr[d == 1]);
+                            if (v0 != v1)
+                            {
+                                isSingleDeltaARow = true;
+                                singleAIndex = j + 1;
+                                break;
+                            }
+                        }
+                        catch (...)
+                        {
+                        }
+                    }
+                    catch (...)
+                    {
+                    }
+                }
+                if (isSingleDeltaARow)
+                    break;
+            }
+        }
+
+        if (isSingleDeltaCRow)
+        {
+            std::string formula = "C" + std::to_string(singleCIndex) +
+                                  "* = (CBVB^-1.A" + std::to_string(singleCIndex) +
+                                  ") - C" + std::to_string(singleCIndex);
+            influencedFormulasOutput.push_back(formula);
+
+            if (isConsoleOutput)
+            {
+                std::cout << formula << std::endl;
+            }
+        }
+
+        if (isSingleDeltaARow)
+        {
+            std::string formula = "A" + std::to_string(singleAIndex) +
+                                  "* = B^-1.A" + std::to_string(singleAIndex);
+            influencedFormulasOutput.push_back(formula);
+
+            if (isConsoleOutput)
+            {
+                std::cout << formula << std::endl;
+            }
+        }
+
+        // Check for delta in Z column (RHS)
+        for (size_t i = 1; i < changingTable.size(); i++)
+        {
+            try
+            {
+                const Symbolic &expr = changingTable[i].back();
+                std::string tmpName = "**sym_tmp_rhs*" + std::to_string(i);
+                Symbolic tmp(tmpName.c_str());
+
+                std::ostringstream oss;
+                oss << expr;
+                std::string before = oss.str();
+                oss.str("");
+                oss.clear();
+                oss << expr[d == tmp];
+                std::string after = oss.str();
+
+                if (before != after)
+                {
+                    isDeltaZCol = true;
+                    break;
+                }
+
+                try
+                {
+                    double v0 = double(expr[d == 0]);
+                    double v1 = double(expr[d == 1]);
+                    if (v0 != v1)
+                    {
+                        isDeltaZCol = true;
+                        break;
+                    }
+                }
+                catch (...)
+                {
+                }
+            }
+            catch (...)
+            {
+            }
+        }
+
+        if (isDeltaZCol)
+        {
+            influencedFormulasOutput.push_back("Z* = CBVB^-1.b");
+            influencedFormulasOutput.push_back("b* = B^-1.b");
+
+            if (isConsoleOutput)
+            {
+                std::cout << "Z* = CBVB^-1.b" << std::endl;
+                std::cout << "b* = B^-1.b" << std::endl;
+            }
+        }
     }
 
     std::vector<std::vector<Symbolic>> doFormulationOperation(const std::vector<Symbolic> &objFunc,
@@ -654,9 +1064,11 @@ public:
             // auto [doubleTableaus, doubleChangingVars, doubleOptimalSolution, _a, __b, headerRow] = dual->DoDualSimplex(tObjFunc, tConstraints, isMin);
 
             std::vector<std::vector<double>> tChangingTable;
-            for (size_t i = 0; i < changingTable.size(); ++i) {
+            for (size_t i = 0; i < changingTable.size(); ++i)
+            {
                 tChangingTable.push_back(std::vector<double>());
-                for (size_t j = 0; j < changingTable[i].size(); ++j) {
+                for (size_t j = 0; j < changingTable[i].size(); ++j)
+                {
                     // tChangingTable[i].push_back(changingTable[i][j].as_double());
                     tChangingTable[i].push_back((double)changingTable[i][j]);
                 }
@@ -675,19 +1087,22 @@ public:
                     this->shouldReoptimize = true;
                 }
             }
-            catch(...)
+            catch (...)
             {
             }
-            
 
-            for (size_t i = 0; i < reOptTableaus.size(); ++i) {
-                for (size_t j = 0; j < reOptTableaus[i].size(); ++j) {
-                    for (size_t k = 0; k < reOptTableaus[i][j].size(); ++k) {
+            for (size_t i = 0; i < reOptTableaus.size(); ++i)
+            {
+                for (size_t j = 0; j < reOptTableaus[i].size(); ++j)
+                {
+                    for (size_t k = 0; k < reOptTableaus[i][j].size(); ++k)
+                    {
                         std::cout << std::setw(10) << reOptTableaus[i][j][k] << " ";
                     }
                     std::cout << std::endl;
                 }
-                std::cout << std::endl << std::endl;
+                std::cout << std::endl
+                          << std::endl;
             }
 
             std::cout << reOptTableaus.size() << std::endl;
@@ -864,6 +1279,11 @@ public:
         this->matrixBNegOneOut = matrixBNegOne;
         this->matrixCbvNegOneOut = matrixCbvNegOne;
 
+        if (!optTabLockState)
+        {
+            detectAndPrintInfluencedFormulas(changingTable, matrixB, matrixCbvNegOne, objFunc.size());
+        }
+
         return make_tuple(changingTable, matrixCbv, matrixB, matrixBNegOne, matrixCbvNegOne, basicVarSpots);
     }
 
@@ -1038,4 +1458,5 @@ public:
 
     std::vector<std::vector<std::vector<double>>> getReOptTableaus() { return reOptTableaus; }
 
+    std::vector<std::string> getInfluencedFormulas() { return influencedFormulasOutput; }
 };

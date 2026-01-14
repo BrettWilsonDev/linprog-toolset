@@ -665,6 +665,18 @@ export function render(formContainer, resultsContainer, Module) {
                 </table>`;
             };
 
+            const renderInfluencedFormulas = (vec) => {
+                const arr = toJSArray(vec);
+
+                return `
+                    <ul style="margin-left:20px">
+                        ${arr.map(item => `
+                            <li>${String(item)}</li>
+                        `).join("")}
+                    </ul>
+                `;
+            };
+
             const renderTables = (mat, header = null) => {
                 const rows = toJSArray(mat);
                 return `<table border="1" cellspacing="0" cellpadding="4">
@@ -681,9 +693,9 @@ export function render(formContainer, resultsContainer, Module) {
                     }
 
                     return `<tr>
-                                    <th>${rowLabel}</th>
-                                    ${cells.map(cell => `<td>${String(cell).replace(/d/g, 'Δ')}</td>`).join('')}
-                                </tr>`;
+                    <th>${rowLabel}</th>
+                        ${cells.map(cell => `<td>${String(cell).replace(/d/g, 'Δ')}</td>`).join('')}
+                    </tr>`;
                 }).join('')}
                 </table>`;
             };
@@ -711,11 +723,16 @@ export function render(formContainer, resultsContainer, Module) {
 
                 <h4>Changing Table</h4>
                 ${renderTables(result.changingTable, result.headerRow)}
+
+                ${renderInfluencedFormulas(result.influencedFormulas)}
             `;
 
             if (result.shouldReOptimize) {
                 resultsContainer.innerHTML += renderSimplex(result);
             }
+
+
+
         } catch (err) {
             resultsContainer.innerHTML = `<p style="color:red">Error: ${err}</p>`;
         }
